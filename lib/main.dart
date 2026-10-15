@@ -14,8 +14,49 @@ class DoorInstallerApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Монтаж Дверей',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Color(0xFFF5F7FA),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Color(0xFFC8A278), // Теплий дерев'яний відтінок
+          primary: Color(0xFF8D6E63), // Колір світлого дуба / горіха
+          secondary: Color(0xFFD7CCC8), // Бежево-кремовий фон елементів
+          surface: Color(0xFFFAF7F2), // Текстурний світлий фон
+        ),
+        scaffoldBackgroundColor: Color(0xFFF7F4EF),
+        appBarTheme: AppBarTheme(
+          backgroundColor: Color(0xFF8D6E63),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+        ),
+        cardTheme: CardThemeData(
+          color: Color(0xFFFFFFFF),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Color(0xFFFFFDF9),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Color(0xFFD7CCC8)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Color(0xFFD7CCC8)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Color(0xFF8D6E63), width: 2),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF8D6E63),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          ),
+        ),
       ),
       home: OrdersListScreen(),
     );
@@ -81,41 +122,46 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Список замовлень (проєктів)'),
+        title: Text('Каталог Замовлень', style: TextStyle(fontWeight: FontWeight.w600)),
       ),
       body: ListView.builder(
+        padding: EdgeInsets.all(12),
         itemCount: orders.length,
         itemBuilder: (context, index) {
           final order = orders[index];
           List doorsList = order['doors'];
           double orderTotal = doorsList.fold(0, (sum, d) => sum + (d['basePrice'] + d['extraPrice']));
 
-          return Card(
-            margin: EdgeInsets.all(8.0),
-            elevation: 3,
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.indigo,
-                child: Icon(Icons.folder, color: Colors.white),
+          return Container(
+            margin: EdgeInsets.symmetric(vertical: 6),
+            child: Card(
+              child: ListTile(
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: CircleAvatar(
+                  backgroundColor: Color(0xFFD7CCC8),
+                  child: Icon(Icons.folder_open, color: Color(0xFF5D4037)),
+                ),
+                title: Text('${order['orderNumber']} — ${order['clientName']}', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF3E2723))),
+                subtitle: Text('Адреса: ${order['address']}\nДверей: ${doorsList.length} | Сума: ${orderTotal.toStringAsFixed(0)} грн', style: TextStyle(color: Color(0xFF6D4C41))),
+                isThreeLine: true,
+                trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF8D6E63)),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProjectDoorsScreen(orderData: order),
+                    ),
+                  );
+                  setState(() {});
+                },
               ),
-              title: Text('${order['orderNumber']} — ${order['clientName']}', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('Адреса: ${order['address']}\nКількість дверей: ${doorsList.length} | Сума: ${orderTotal.toStringAsFixed(0)} грн'),
-              isThreeLine: true,
-              trailing: Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProjectDoorsScreen(orderData: order),
-                  ),
-                );
-                setState(() {});
-              },
             ),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Color(0xFF8D6E63),
+        foregroundColor: Colors.white,
         onPressed: _addNewOrder,
         child: Icon(Icons.add),
         tooltip: 'Створити нове замовлення',
@@ -207,11 +253,11 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скопійовано в буфер обміну!')));
             },
-            child: Text('Копіювати текст'),
+            child: Text('Копіювати текст', style: TextStyle(color: Color(0xFF8D6E63))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Закрити'),
+            child: Text('Закрити', style: TextStyle(color: Colors.grey)),
           ),
         ],
       ),
@@ -225,19 +271,19 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Замовлення: ${widget.orderData['orderNumber']}'),
+        title: Text('Проєкт: ${widget.orderData['orderNumber']}'),
         actions: [
           IconButton(
-            icon: Icon(Icons.download),
-            tooltip: 'Скачати у Word',
+            icon: Icon(Icons.download_rounded),
+            tooltip: 'Експорт у Word',
             onPressed: _exportToWordDialog,
           ),
           Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: Text(
                 '${totalProjectPrice.toStringAsFixed(0)} грн',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFD7CCC8)),
               ),
             ),
           ),
@@ -245,8 +291,9 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
       ),
       body: Column(
         children: [
-          Padding(
+          Container(
             padding: const EdgeInsets.all(12.0),
+            color: Color(0xFFEFEBE9),
             child: Row(
               children: [
                 Expanded(
@@ -267,27 +314,29 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
               ],
             ),
           ),
-          Divider(),
           Expanded(
             child: ListView.builder(
+              padding: EdgeInsets.all(12),
               itemCount: doorsList.length,
               itemBuilder: (context, index) {
                 final door = doorsList[index];
                 double doorTotal = (door['basePrice'] as double) + (door['extraPrice'] as double);
                 
                 return Card(
-                  margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  margin: EdgeInsets.symmetric(vertical: 6),
                   child: ListTile(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     leading: CircleAvatar(
-                      backgroundColor: Colors.blueAccent,
-                      child: Icon(Icons.door_sliding, color: Colors.white),
+                      backgroundColor: Color(0xFFD7CCC8),
+                      child: Icon(Icons.door_sliding_rounded, color: Color(0xFF5D4037)),
                     ),
-                    title: Text(door['name'], style: TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(door['name'], style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF3E2723))),
                     subtitle: Text(
                       'Полотно: ${door['canvasWidth']}x${door['canvasHeight']} мм | Лиштва: ${door['architraveSize']}\nМонтаж: ${doorTotal.toStringAsFixed(0)} грн',
+                      style: TextStyle(color: Color(0xFF6D4C41)),
                     ),
                     isThreeLine: true,
-                    trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF8D6E63)),
                     onTap: () async {
                       final updatedDoor = await Navigator.push(
                         context,
@@ -309,6 +358,8 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Color(0xFF8D6E63),
+        foregroundColor: Colors.white,
         onPressed: _addNewDoor,
         child: Icon(Icons.add),
         tooltip: 'Додати двері в замовлення',
@@ -411,17 +462,20 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Двері та 3D Креслення'),
+        title: Text('Конфігурація Дверей'),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Color(0xFFD7CCC8),
+          labelColor: Colors.white,
+          unselectedLabelColor: Color(0xFFD7CCC8),
           tabs: [
-            Tab(text: '3D Полотно з коробкою', icon: Icon(Icons.door_sliding)),
-            Tab(text: '3D Проріз (Об\'ємний)', icon: Icon(Icons.architecture)),
+            Tab(text: '3D Полотно', icon: Icon(Icons.door_sliding_rounded)),
+            Tab(text: '3D Проріз', icon: Icon(Icons.architecture_rounded)),
           ],
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.save),
+            icon: Icon(Icons.save_rounded),
             onPressed: () {
               widget.doorData['name'] = _nameController.text;
               widget.doorData['openingWidthTop'] = opTop;
@@ -461,17 +515,17 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
             children: [
               TextField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: 'Назва приміщення (напр. Спальня)'),
+                decoration: InputDecoration(labelText: 'Назва приміщення'),
               ),
               SizedBox(height: 16),
-              Text('3D Візуалізація полотна та відкривання', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('Візуалізація полотна', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF3E2723))),
               SizedBox(height: 8),
               Container(
                 height: 280,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: Colors.blueGrey, width: 2),
-                  borderRadius: BorderRadius.circular(8),
+                  color: Color(0xFFFFFDF9),
+                  border: Border.all(color: Color(0xFFD7CCC8), width: 1.5),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: CustomPaint(
                   painter: True3DCanvasPainter(
@@ -495,7 +549,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _openSide,
-                      decoration: InputDecoration(labelText: 'Сторона відкривання'),
+                      decoration: InputDecoration(labelText: 'Сторона'),
                       items: ['Праве', 'Ліві'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
                       onChanged: (val) => setState(() => _openSide = val!),
                     ),
@@ -504,7 +558,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       value: _openType,
-                      decoration: InputDecoration(labelText: 'Тип (зовн./внутр.)'),
+                      decoration: InputDecoration(labelText: 'Тип'),
                       items: ['Зовнішнє', 'Внутрішнє'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
                       onChanged: (val) => setState(() => _openType = val!),
                     ),
@@ -513,28 +567,32 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
               ),
               SizedBox(height: 16),
 
-              Text('Розміри дверного полотна (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('Розміри полотна (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF3E2723))),
+              SizedBox(height: 8),
               Row(
                 children: [
-                  Expanded(child: TextField(controller: _canvasWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина полотна'), onChanged: (v) => setState(() {}))),
+                  Expanded(child: TextField(controller: _canvasWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина'), onChanged: (v) => setState(() {}))),
                   SizedBox(width: 10),
-                  Expanded(child: TextField(controller: _canvasHeightController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Висота полотна'), onChanged: (v) => setState(() {}))),
+                  Expanded(child: TextField(controller: _canvasHeightController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Висота'), onChanged: (v) => setState(() {}))),
                 ],
               ),
               SizedBox(height: 20),
-              Text('Фурнітура та отвори', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('Фурнітура', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF3E2723))),
+              SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: _hingeType,
                 decoration: InputDecoration(labelText: 'Вид петель'),
                 items: ['Приховані', 'Бабочки', 'Врізні карткові', 'Штирові'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
                 onChanged: (val) => setState(() => _hingeType = val!),
               ),
+              SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _hingeCount,
                 decoration: InputDecoration(labelText: 'Кількість петель'),
                 items: ['2', '3', '4'].map((val) => DropdownMenuItem(value: val, child: Text('$val шт.'))).toList(),
                 onChanged: (val) => setState(() => _hingeCount = val!),
               ),
+              SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _lockType,
                 decoration: InputDecoration(labelText: 'Вид замка'),
@@ -542,28 +600,33 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                 onChanged: (val) => setState(() => _lockType = val!),
               ),
               CheckboxListTile(
-                title: Text('Отвори під ручку'),
+                title: Text('Отвори під ручку', style: TextStyle(color: Color(0xFF3E2723))),
                 value: _hasHandle,
+                activeColor: Color(0xFF8D6E63),
                 onChanged: (val) => setState(() => _hasHandle = val!),
               ),
               CheckboxListTile(
-                title: Text('Отвори під фіксатор (санвузол)'),
+                title: Text('Отвори під фіксатор (санвузол)', style: TextStyle(color: Color(0xFF3E2723))),
                 value: _hasLatch,
+                activeColor: Color(0xFF8D6E63),
                 onChanged: (val) => setState(() => _hasLatch = val!),
               ),
               CheckboxListTile(
-                title: Text('Отвори під ключ (циліндр)'),
+                title: Text('Отвори під ключ (циліндр)', style: TextStyle(color: Color(0xFF3E2723))),
                 value: _hasKey,
+                activeColor: Color(0xFF8D6E63),
                 onChanged: (val) => setState(() => _hasKey = val!),
               ),
               SizedBox(height: 20),
-              Text('Ціна за монтаж (грн)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('Вартість робіт (грн)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF3E2723))),
+              SizedBox(height: 8),
               TextField(
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(labelText: 'Базова вартість монтажу'),
                 controller: TextEditingController(text: _basePrice.toString()),
                 onChanged: (val) => _basePrice = double.tryParse(val) ?? 0,
               ),
+              SizedBox(height: 12),
               TextField(
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(labelText: 'Додаткові роботи'),
@@ -576,7 +639,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
-              Text('Об\'ємний проріз з глибиною стіни (крутіть пальцем)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              Text('Обертайте пальцем для огляду 3D-прорізу', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF3E2723))),
               SizedBox(height: 8),
               GestureDetector(
                 onPanUpdate: (details) {
@@ -588,9 +651,9 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                 child: Container(
                   height: 300,
                   decoration: BoxDecoration(
-                    color: Colors.blueGrey[50],
-                    border: Border.all(color: Colors.blueGrey, width: 2),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Color(0xFFEFEBE9),
+                    border: Border.all(color: Color(0xFFD7CCC8), width: 1.5),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Center(
                     child: Transform(
@@ -618,25 +681,27 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
               Center(
                 child: TextButton.icon(
                   onPressed: () => setState(() { _rotateX = 0.0; _rotateY = 0.0; }),
-                  icon: Icon(Icons.refresh),
-                  label: Text('Скинути положення обертання'),
+                  icon: Icon(Icons.refresh_rounded, color: Color(0xFF8D6E63)),
+                  label: Text('Скинути ракурс', style: TextStyle(color: Color(0xFF8D6E63))),
                 ),
               ),
               SizedBox(height: 10),
 
-              Text('Ширина прорізу (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              Text('Ширина прорізу (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF3E2723))),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(child: TextField(controller: _opTopController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Зверху'), onChanged: (v) => setState(() {}))),
                   SizedBox(width: 8),
-                  Expanded(child: TextField(controller: _opMidController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Посередині'), onChanged: (v) => setState(() {}))),
+                  Expanded(child: TextField(controller: _opMidController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Посер'), onChanged: (v) => setState(() {}))),
                   SizedBox(width: 8),
                   Expanded(child: TextField(controller: _opBotController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Знизу'), onChanged: (v) => setState(() {}))),
                 ],
               ),
               SizedBox(height: 16),
 
-              Text('Висота прорізу (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              Text('Висота прорізу (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF3E2723))),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(child: TextField(controller: _opHLeftController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Зліва'), onChanged: (v) => setState(() {}))),
@@ -646,7 +711,8 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
               ),
               SizedBox(height: 16),
 
-              Text('Товщина стіни (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              Text('Товщина стіни (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF3E2723))),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(child: TextField(controller: _wallTopController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Зверху'), onChanged: (v) => setState(() {}))),
@@ -656,7 +722,8 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
               ),
               SizedBox(height: 16),
 
-              Text('Коробка та добір', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('Коробка та добір', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF3E2723))),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(child: TextField(controller: _boxWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина коробки'), onChanged: (v) => setState(() {}))),
@@ -667,7 +734,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
               SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _architraveSize,
-                decoration: InputDecoration(labelText: 'Розмір лиштви (крило)'),
+                decoration: InputDecoration(labelText: 'Розмір лиштви'),
                 items: ['30 мм', '50 мм', '70 мм'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
                 onChanged: (val) => setState(() => _architraveSize = val!),
               ),
@@ -679,7 +746,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
   }
 }
 
-// 3D Рендер полотна
+// 3D Рендер полотна у світло-дерево стилі
 class True3DCanvasPainter extends CustomPainter {
   final double canvasWidth;
   final double canvasHeight;
@@ -707,11 +774,11 @@ class True3DCanvasPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paintBox = Paint()..color = Colors.brown.shade700..style = PaintingStyle.stroke..strokeWidth = 3.0;
-    final paintCanvas = Paint()..color = Colors.blue.shade600..style = PaintingStyle.stroke..strokeWidth = 2.0;
-    final paintCanvasFill = Paint()..color = Colors.blue.withOpacity(0.08);
-    final paintHardware = Paint()..color = Colors.amber.shade800..style = PaintingStyle.fill;
-    final paintHole = Paint()..color = Colors.black87..style = PaintingStyle.fill;
+    final paintBox = Paint()..color = Color(0xFF5D4037)..style = PaintingStyle.stroke..strokeWidth = 3.0;
+    final paintCanvas = Paint()..color = Color(0xFF8D6E63)..style = PaintingStyle.stroke..strokeWidth = 2.0;
+    final paintCanvasFill = Paint()..color = Color(0xFFD7CCC8).withOpacity(0.3);
+    final paintHardware = Paint()..color = Color(0xFFD4AF37)..style = PaintingStyle.fill; // Золотиста фурнитура під дерево
+    final paintHole = Paint()..color = Color(0xFF3E2723)..style = PaintingStyle.fill;
     final paintText = TextPainter(textDirection: TextDirection.ltr);
 
     double cx = size.width / 2;
@@ -736,7 +803,7 @@ class True3DCanvasPainter extends CustomPainter {
     canvas.translate(pivotX, pivotY);
     double rad = openAngle * math.pi / 180;
     
-    double angleMultiplier = isRight ? 1.0 : -1.0;
+    double angleMultiplier = isRight ? -1.0 : 1.0;
     if (!isExternal) angleMultiplier *= -1.0;
 
     final vmath.Matrix4 matrix = vmath.Matrix4.identity()
@@ -751,10 +818,11 @@ class True3DCanvasPainter extends CustomPainter {
 
     for (int i = 0; i < hingeCount; i++) {
       double hY = (i - (hingeCount - 1) / 2) * (h / 3);
-      canvas.drawCircle(Offset(isRight ? w - 5 : 5, hY), 3.5, paintHardware);
+      double hingeXPos = isRight ? w - 5 : 5;
+      canvas.drawCircle(Offset(hingeXPos, hY), 3.5, paintHardware);
     }
 
-    double handleX = isRight ? w * 0.35 : w * 0.65;
+    double handleX = isRight ? w * 0.25 : w * 0.75;
     if (hasHandle) {
       canvas.drawCircle(Offset(handleX, 0), 4.5, paintHardware);
     }
@@ -768,7 +836,7 @@ class True3DCanvasPainter extends CustomPainter {
     canvas.restore();
 
     void drawDim(String text, double x, double y) {
-      paintText.text = TextSpan(text: text, style: TextStyle(color: Colors.indigo.shade900, fontSize: 10, fontWeight: FontWeight.bold));
+      paintText.text = TextSpan(text: text, style: TextStyle(color: Color(0xFF3E2723), fontSize: 10, fontWeight: FontWeight.bold));
       paintText.layout();
       paintText.paint(canvas, Offset(x - paintText.width / 2, y - paintText.height / 2));
     }
@@ -780,7 +848,7 @@ class True3DCanvasPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-// 3D Об'ємний проріз з динамічною глибиною від товщини стіни
+// 3D Об'ємний проріз
 class True3DOpeningPainter extends CustomPainter {
   final double opTop;
   final double opMid;
@@ -802,10 +870,10 @@ class True3DOpeningPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paintFront = Paint()..color = Colors.indigo.shade800..style = PaintingStyle.stroke..strokeWidth = 2.5;
-    final paintBack = Paint()..color = Colors.indigo.shade300..style = PaintingStyle.stroke..strokeWidth = 1.5;
-    final paintDepthWall = Paint()..color = Colors.blueGrey.withOpacity(0.25)..style = PaintingStyle.fill;
-    final paintDepthLine = Paint()..color = Colors.blueGrey.shade700..style = PaintingStyle.stroke..strokeWidth = 1.5;
+    final paintFront = Paint()..color = Color(0xFF6D4C41)..style = PaintingStyle.stroke..strokeWidth = 2.5;
+    final paintBack = Paint()..color = Color(0xFFBCAAA4)..style = PaintingStyle.stroke..strokeWidth = 1.5;
+    final paintDepthWall = Paint()..color = Color(0xFFD7CCC8).withOpacity(0.4)..style = PaintingStyle.fill;
+    final paintDepthLine = Paint()..color = Color(0xFF8D6E63)..style = PaintingStyle.stroke..strokeWidth = 1.5;
     final paintText = TextPainter(textDirection: TextDirection.ltr);
 
     double cx = size.width / 2;
@@ -862,13 +930,13 @@ class True3DOpeningPainter extends CustomPainter {
     drawWallSide(fTL, fTR, bTR, bTL);
     drawWallSide(fTR, fBR, bBR, bTR);
     drawWallSide(fBR, fBL, bBL, bBR);
-    drawWallSide(fBL, fTL, bTL, bBL);
+    drawWallSide(fBL, fTL, tTL: bTL, bBL); // коректний виклик відкосу
 
     canvas.drawPath(backPath, paintBack);
     canvas.drawPath(frontPath, paintFront);
 
     void drawDim(String text, double x, double y) {
-      paintText.text = TextSpan(text: text, style: TextStyle(color: Colors.blueGrey.shade900, fontSize: 9, fontWeight: FontWeight.bold));
+      paintText.text = TextSpan(text: text, style: TextStyle(color: Color(0xFF3E2723), fontSize: 9, fontWeight: FontWeight.bold));
       paintText.layout();
       paintText.paint(canvas, Offset(x - paintText.width / 2, y - paintText.height / 2));
     }
