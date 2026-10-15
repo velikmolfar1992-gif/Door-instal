@@ -4,7 +4,6 @@ workflows:
     max_build_duration: 30
     environment:
       flutter: stable
-      cmake: latest
     scripts:
       - name: Get flutter packages
         script: flutter packages get
