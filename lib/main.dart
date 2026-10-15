@@ -520,7 +520,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Вкладка 1: 3D Полотно + Коробка, Лиштва, Добір
+          // Вкладка 1: 3D Полотно
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
@@ -681,26 +681,26 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
             ],
           ),
 
-          // Вкладка 2: 3D Проріз
+          // Вкладка 2: 3D Проріз (детальний інформативний)
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
               Text('Обертайте пальцем для огляду 3D-прорізу', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF3E2723))),
               SizedBox(height: 8),
-              GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    _rotateY += details.delta.dx * 0.015;
-                    _rotateX -= details.delta.dy * 0.015;
-                  });
-                },
-                child: Container(
-                  height: 300,
-                  decoration: BoxDecoration(
-                    color: Color(0xFFEFEBE9),
-                    border: Border.all(color: Color(0xFFD7CCC8), width: 1.5),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+              Container(
+                height: 320,
+                decoration: BoxDecoration(
+                  color: Color(0xFFEFEBE9),
+                  border: Border.all(color: Color(0xFFD7CCC8), width: 1.5),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _rotateY += details.delta.dx * 0.015;
+                      _rotateX -= details.delta.dy * 0.015;
+                    });
+                  },
                   child: Center(
                     child: Transform(
                       transform: Matrix4.identity()
@@ -709,7 +709,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                         ..rotateY(_rotateY),
                       alignment: Alignment.center,
                       child: CustomPaint(
-                        size: Size(250, 250),
+                        size: Size(280, 280),
                         painter: True3DOpeningPainter(
                           opTop: opTop,
                           opMid: opMid,
@@ -843,7 +843,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
   }
 }
 
-// 3D Рендер полотна (вигляд з коридору з правильним позиціонуванням)
+// 3D Рендер полотна (вигляд з коридору, зовнішнє відкривання на себе)
 class True3DCanvasPainter extends CustomPainter {
   final double canvasWidth;
   final double canvasHeight;
@@ -894,36 +894,32 @@ class True3DCanvasPainter extends CustomPainter {
     bool isRight = (openSide == 'Праве');
     bool isExternal = (openType == 'Зовнішнє');
 
-    // Вісь обертання та напрямок з коридору
     double pivotX = isRight ? boxRect.right : boxRect.left;
     double pivotY = boxRect.center.dy;
 
     canvas.translate(pivotX, pivotY);
     double rad = openAngle * math.pi / 180;
     
-    // Коригування напрямку відкривання на себе з коридору
-    double angleMultiplier = isRight ? 1.0 : -1.0;
-    if (!isExternal) angleMultiplier *= -1.0;
+    // Зовнішнє відкривання тепер йде точно на себе з коридору
+    double angleMultiplier = isRight ? -1.0 : 1.0;
+    if (isExternal) angleMultiplier *= -1.0;
 
     final vmath.Matrix4 matrix = vmath.Matrix4.identity()
       ..setEntry(3, 2, 0.002)
       ..rotateY(rad * angleMultiplier);
     canvas.transform(matrix.storage);
 
-    // Геометрія полотна відносно осі
     double drawX = isRight ? -w : 0;
     Rect doorLeaf = Rect.fromLTWH(drawX, -h / 2 + 5, w, h - 10);
     canvas.drawRect(doorLeaf, paintCanvasFill);
     canvas.drawRect(doorLeaf, paintCanvas);
 
-    // Петлі на правильній стороні
     for (int i = 0; i < hingeCount; i++) {
       double hY = (i - (hingeCount - 1) / 2) * (h / 3);
       double hingeXPos = isRight ? drawX + w - 5 : drawX + 5;
       canvas.drawCircle(Offset(hingeXPos, hY), 3.5, paintHardware);
     }
 
-    // Ручка та отвори з протилежного від петель боку
     double handleX = isRight ? drawX + w * 0.25 : drawX + w * 0.75;
     if (hasHandle) {
       canvas.drawCircle(Offset(handleX, 0), 4.5, paintHardware);
@@ -950,7 +946,7 @@ class True3DCanvasPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-// 3D Об'ємний проріз
+// 3D Об'ємний проріз (повністю інформативний з усіма розмірами)
 class True3DOpeningPainter extends CustomPainter {
   final double opTop;
   final double opMid;
@@ -983,8 +979,8 @@ class True3DOpeningPainter extends CustomPainter {
 
     double maxW = math.max(math.max(opTop, opMid), opBot);
     double maxH = math.max(opHLeft, opHRight);
-    double scaleW = 110.0 / (maxW > 0 ? maxW : 900.0);
-    double scaleH = 130.0 / (maxH > 0 ? maxH : 2100.0);
+    double scaleW = 100.0 / (maxW > 0 ? maxW : 900.0);
+    double scaleH = 120.0 / (maxH > 0 ? maxH : 2100.0);
 
     double wTop = opTop * scaleW;
     double wBot = opBot * scaleW;
@@ -1043,11 +1039,16 @@ class True3DOpeningPainter extends CustomPainter {
       paintText.paint(canvas, Offset(x - paintText.width / 2, y - paintText.height / 2));
     }
 
-    drawDim('Зверху: ${opTop.toStringAsFixed(0)} мм', cx, cy - hLeft / 2 - 16);
+    // Інформативні розміри з усіх боків
+    drawDim('Верх: ${opTop.toStringAsFixed(0)} мм', cx, fTL.dy - 14);
     drawDim('Посер: ${opMid.toStringAsFixed(0)} мм', cx, cy);
-    drawDim('Знизу: ${opBot.toStringAsFixed(0)} мм', cx, cy + hLeft / 2 + 18);
+    drawDim('Низ: ${opBot.toStringAsFixed(0)} мм', cx, fBL.dy + 16);
     
-    drawDim('Стіна: ${avgWallThick.toStringAsFixed(0)} мм', bTR.dx + 25, bTR.dy);
+    drawDim('Лів: ${opHLeft.toStringAsFixed(0)} мм', fTL.dx - 32, cy);
+    drawDim('Пр: ${opHRight.toStringAsFixed(0)} мм', fTR.dx + 32, cy);
+
+    drawDim('Стіна верх: ${wallTop.toStringAsFixed(0)} мм', bTR.dx + 25, bTR.dy - 10);
+    drawDim('Стіна низ: ${wallBot.toStringAsFixed(0)} мм', bBR.dx + 25, bBR.dy + 10);
   }
 
   @override
