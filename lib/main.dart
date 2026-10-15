@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 void main() {
   runApp(DoorInstallerApp());
@@ -25,12 +26,17 @@ class DoorProjectScreen extends StatefulWidget {
 }
 
 class _DoorProjectScreenState extends State<DoorProjectScreen> {
+  String clientName = "Іван Петренко";
+  String orderNumber = "№ 2026-001";
+
   final List<Map<String, dynamic>> doors = [
     {
       'name': 'Спальня',
-      'width': '800',
-      'height': '2000',
-      'wallThick': '150',
+      'width': 800.0,
+      'height': 2000.0,
+      'wallThick': 160.0,
+      'openSide': 'Праве',
+      'openType': 'Зовнішнє',
       'hingeType': 'Приховані',
       'hingeCount': '3',
       'lockType': 'Магнітний',
@@ -45,10 +51,12 @@ class _DoorProjectScreenState extends State<DoorProjectScreen> {
   void _addNewDoor() {
     setState(() {
       doors.add({
-        'name': 'Нові двері ${doors.length + 1}',
-        'width': '700',
-        'height': '2000',
-        'wallThick': '100',
+        'name': 'Двері ${doors.length + 1}',
+        'width': 700.0,
+        'height': 2000.0,
+        'wallThick': 100.0,
+        'openSide': 'Ліві',
+        'openType': 'Зовнішнє',
         'hingeType': 'Бабочки',
         'hingeCount': '2',
         'lockType': 'Механічний',
@@ -67,7 +75,13 @@ class _DoorProjectScreenState extends State<DoorProjectScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Об'єкт: Квартира на Шевченка"),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Замовлення: $orderNumber', style: TextStyle(fontSize: 14)),
+            Text('Клієнт: $clientName', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
         actions: [
           Center(
             child: Padding(
@@ -84,7 +98,7 @@ class _DoorProjectScreenState extends State<DoorProjectScreen> {
         itemCount: doors.length,
         itemBuilder: (context, index) {
           final door = doors[index];
-          double doorTotal = door['basePrice'] + door['extraPrice'];
+          double doorTotal = (door['basePrice'] as double) + (door['extraPrice'] as double);
           
           return Card(
             margin: EdgeInsets.all(8.0),
@@ -96,7 +110,7 @@ class _DoorProjectScreenState extends State<DoorProjectScreen> {
               ),
               title: Text(door['name'], style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(
-                'Розмір: ${door['width']}x${door['height']} мм | Петлі: ${door['hingeType']} (${door['hingeCount']} шт.)\nМонтаж: ${doorTotal.toStringAsFixed(0)} грн',
+                'Проріз: ${door['width']}x${door['height']} мм | Стіна: ${door['wallThick']} мм\nВідкривання: ${door['openSide']}, ${door['openType']}\nМонтаж: ${doorTotal.toStringAsFixed(0)} грн',
               ),
               isThreeLine: true,
               trailing: Icon(Icons.arrow_forward_ios, size: 16),
@@ -140,6 +154,8 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
   late TextEditingController _heightController;
   late TextEditingController _wallController;
   
+  String _openSide = 'Праве';
+  String _openType = 'Зовнішнє';
   String _hingeType = 'Приховані';
   String _hingeCount = '3';
   String _lockType = 'Магнітний';
@@ -155,10 +171,12 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.doorData['name']);
-    _widthController = TextEditingController(text: widget.doorData['width']);
-    _heightController = TextEditingController(text: widget.doorData['height']);
-    _wallController = TextEditingController(text: widget.doorData['wallThick']);
+    _widthController = TextEditingController(text: widget.doorData['width'].toString());
+    _heightController = TextEditingController(text: widget.doorData['height'].toString());
+    _wallController = TextEditingController(text: widget.doorData['wallThick'].toString());
     
+    _openSide = widget.doorData['openSide'];
+    _openType = widget.doorData['openType'];
     _hingeType = widget.doorData['hingeType'];
     _hingeCount = widget.doorData['hingeCount'];
     _lockType = widget.doorData['lockType'];
@@ -169,8 +187,40 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
     _extraPrice = widget.doorData['extraPrice'];
   }
 
+  // Розрахунок матеріалів
+  Map<String, dynamic> calculateMaterials() {
+    double w = double.tryParse(_widthController.text) ?? 800;
+    double h = double.tryParse(_heightController.text) ?? 2000;
+    double wall = double.tryParse(_wallController.text) ?? 100;
+
+    // Стандартна ширина коробки зазвичай 70-80 мм
+    double standardBoxWidth = 80.0;
+    
+    // Кількість лиштви: 2 сторони по (2 вертикальні палиці висотою біля 2.1м + 1 горизонтальна біля 1м) -> в комплекті зазвичай 2.5 шт на бік, разом 5 шт на двері (або в пачках по 2.5м)
+    int architravesPieces = 5; // 5 палок лиштви на дві сторони
+
+    // Коробка: 2.5 палки на стандартний блок (2 стійки + поріг/притолока)
+    int boxPieces = 3;
+
+    // Добори: якщо стіна товща за коробку (наприклад, > 90-100мм), потрібен добір
+    double needDoborWidth = wall - 90;
+    if (needDoborWidth < 0) needDoborWidth = 0;
+    
+    // Кількість добірної дошки (погонні метри: 2 стійки + 1 поперечина = приблизно 5 м.п.)
+    double doborMeters = needDoborWidth > 0 ? 5.0 : 0.0;
+
+    return {
+      'boxPieces': boxPieces,
+      'architravesPieces': architravesPieces,
+      'doborWidth': needDoborWidth > 0 ? needDoborWidth : 0.0,
+      'doborMeters': doborMeters,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final mats = calculateMaterials();
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Редагування прорізу'),
@@ -179,9 +229,11 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
             icon: Icon(Icons.save),
             onPressed: () {
               widget.doorData['name'] = _nameController.text;
-              widget.doorData['width'] = _widthController.text;
-              widget.doorData['height'] = _heightController.text;
-              widget.doorData['wallThick'] = _wallController.text;
+              widget.doorData['width'] = double.tryParse(_widthController.text) ?? 800;
+              widget.doorData['height'] = double.tryParse(_heightController.text) ?? 2000;
+              widget.doorData['wallThick'] = double.tryParse(_wallController.text) ?? 100;
+              widget.doorData['openSide'] = _openSide;
+              widget.doorData['openType'] = _openType;
               widget.doorData['hingeType'] = _hingeType;
               widget.doorData['hingeCount'] = _hingeCount;
               widget.doorData['lockType'] = _lockType;
@@ -207,58 +259,104 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           Text('Розміри прорізу (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Row(
             children: [
-              Expanded(child: TextField(controller: _widthController, decoration: InputDecoration(labelText: 'Ширина'))),
+              Expanded(child: TextField(controller: _widthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина'))),
               SizedBox(width: 10),
-              Expanded(child: TextField(controller: _heightController, decoration: InputDecoration(labelText: 'Висота'))),
+              Expanded(child: TextField(controller: _heightController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Висота'))),
               SizedBox(width: 10),
-              Expanded(child: TextField(controller: _wallController, decoration: InputDecoration(labelText: 'Товщина стіни'))),
+              Expanded(child: TextField(controller: _wallController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Товщ. стіни'))),
+            ],
+          ),
+          SizedBox(height: 16),
+          
+          // Вибір відкривання
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _openSide,
+                  decoration: InputDecoration(labelText: 'Сторона'),
+                  items: ['Праве', 'Ліві'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                  onChanged: (val) => setState(() => _openSide = val!),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _openType,
+                  decoration: InputDecoration(labelText: 'Тип відкривання'),
+                  items: ['Зовнішнє', 'Внутрішнє'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                  onChanged: (val) => setState(() => _openType = val!),
+                ),
+              ),
             ],
           ),
           SizedBox(height: 20),
+          
+          // 2D Креслення та Візуалізація
+          Text('Візуальне 2D креслення прорізу', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          SizedBox(height: 8),
           Container(
-            height: 150,
+            height: 180,
             decoration: BoxDecoration(
-              color: Colors.blueGrey[50],
-              border: Border.all(color: Colors.blueGrey),
+              color: Colors.white,
+              border: Border.all(color: Colors.blueGrey, width: 2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(
+            child: CustomPaint(
+              painter: Door2DPainter(
+                openSide: _openSide,
+                openType: _openType,
+              ),
+              child: Center(
+                child: Text(
+                  '${_widthController.text} x ${_heightController.text} мм\n(Стіна: ${_wallController.text} мм)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold, backgroundColor: Colors.white70),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: 20),
+
+          // Калькуляція матеріалів
+          Card(
+            color: Colors.blue[50],
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.crop_din, size: 40, color: Colors.blueGrey),
-                  SizedBox(height: 8),
-                  Text('3D Креслення прорізу\n(${_widthController.text} x ${_heightController.text} мм)', textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey[800])),
+                  Text('📦 Розрахунок необхідних матеріалів:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.blue[900])),
+                  SizedBox(height: 6),
+                  Text('• Коробка: ${mats['boxPieces']} шт. (стандартна ширина ~80 мм)'),
+                  Text('• Лиштва: ${mats['architravesPieces']} пал. (на обидві сторони)'),
+                  Text('• Добори: ${mats['doborMeters']} м.п. (ширина добору: ${mats['doborWidth']} мм)'),
                 ],
               ),
             ),
           ),
           SizedBox(height: 20),
+          
           Text('Фурнітура та отвори', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           DropdownButtonFormField<String>(
             value: _hingeType,
             decoration: InputDecoration(labelText: 'Вид петель'),
-            items: ['Приховані', 'Бабочки', 'Врізні карткові', 'Штирові'].map((String value) {
-              return DropdownMenuItem<String>(value: value, child: Text(value));
-            }).toList(),
-            onChanged: (newValue) => setState(() => _hingeType = newValue!),
+            items: ['Приховані', 'Бабочки', 'Врізні карткові', 'Штирові'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+            onChanged: (val) => setState(() => _hingeType = val!),
           ),
           DropdownButtonFormField<String>(
             value: _hingeCount,
             decoration: InputDecoration(labelText: 'Кількість петель'),
-            items: ['2', '3', '4'].map((String value) {
-              return DropdownMenuItem<String>(value: value, child: Text('$value шт.'));
-            }).toList(),
-            onChanged: (newValue) => setState(() => _hingeCount = newValue!),
+            items: ['2', '3', '4'].map((val) => DropdownMenuItem(value: val, child: Text('$val шт.'))).toList(),
+            onChanged: (val) => setState(() => _hingeCount = val!),
           ),
           DropdownButtonFormField<String>(
             value: _lockType,
             decoration: InputDecoration(labelText: 'Вид замка'),
-            items: ['Магнітний', 'Механічний (язичок)', 'Під циліндр'].map((String value) {
-              return DropdownMenuItem<String>(value: value, child: Text(value));
-            }).toList(),
-            onChanged: (newValue) => setState(() => _lockType = newValue!),
+            items: ['Магнітний', 'Механічний (язичок)', 'Під циліндр'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+            onChanged: (val) => setState(() => _lockType = val!),
           ),
+          
           CheckboxListTile(
             title: Text('Отвори під ручку'),
             value: _hasHandle,
@@ -274,6 +372,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
             value: _hasKey,
             onChanged: (val) => setState(() => _hasKey = val!),
           ),
+          
           SizedBox(height: 20),
           Text('Ціна за монтаж (грн)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           TextField(
@@ -286,10 +385,60 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
             keyboardType: TextInputType.number,
             decoration: InputDecoration(labelText: 'Додаткові роботи (добори, лиштва тощо)'),
             controller: TextEditingController(text: _extraPrice.toString()),
-            onChanged: (val) => _extraPrice = double.tryParse(val) ?? 0,
+            onChanged: (val) => _extraPrice = double.tryScale ?? double.tryParse(val) ?? 0,
           ),
         ],
       ),
     );
   }
+}
+
+// Допоміжний клас для малювання 2D креслення прорізу та відкривання
+class Door2DPainter extends CustomPainter {
+  final String openSide;
+  final String openType;
+
+  Door2DPainter({required this.openSide, required this.openType});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paintWall = Paint()
+      ..color = Colors.blueGrey
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0;
+
+    final paintDoor = Paint()
+      ..color = Colors.blue
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+
+    final rect = Rect.fromLTWH(size.width * 0.25, size.height * 0.15, size.width * 0.5, size.height * 0.7);
+    
+    // Малюємо стіни / проріз
+    canvas.drawRect(rect, paintWall);
+
+    // Малюємо схему відкривання полотна
+    Path path = Path();
+    if (openSide == 'Праве') {
+      if (openType == 'Зовнішнє') {
+        path.moveTo(rect.right, rect.bottom);
+        path.arcToPoint(Offset(rect.right, rect.top), radius: Radius.circular(rect.height), clockwise: false);
+      } else {
+        path.moveTo(rect.right, rect.top);
+        path.arcToPoint(Offset(rect.right, rect.bottom), radius: Radius.circular(rect.height), clockwise: false);
+      }
+    } else {
+      if (openType == 'Зовнішнє') {
+        path.moveTo(rect.left, rect.bottom);
+        path.arcToPoint(Offset(rect.left, rect.top), radius: Radius.circular(rect.height), clockwise: true);
+      } else {
+        path.moveTo(rect.left, rect.top);
+        path.arcToPoint(Offset(rect.left, rect.bottom), radius: Radius.circular(rect.height), clockwise: true);
+      }
+    }
+    canvas.drawPath(path, paintDoor);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
