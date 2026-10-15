@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.scaffold.dart'; // standard
+import 'package:flutter/services.dart'; // Потрібно для копіювання у буфер обміну
 import 'dart:math' as math;
 
 void main() {
@@ -108,7 +108,7 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
                     builder: (context) => ProjectDoorsScreen(orderData: order),
                   ),
                 );
-                setState({});
+                setState(() {});
               },
             ),
           );
@@ -174,46 +174,28 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
     });
   }
 
-  // Генерація та показ документа для завантаження у Word (.doc / HTML)
   void _exportToWordDialog() {
-    String htmlContent = """
-    <html lang="uk">
-    <head><meta charset="utf-8"><title>Замовлення</title></head>
-    <body style="font-family: Arial, sans-serif;">
-      <h2>Замовлення ${widget.orderData['orderNumber']}</h2>
-      <p><b>Клієнт:</b> ${widget.orderData['clientName']}</p>
-      <p><b>Адреса:</b> ${widget.orderData['address']}</p>
-      <hr/>
-      <h3>Список дверей та замірів:</h3>
-    """;
-
+    String htmlContent = "Замовлення: ${widget.orderData['orderNumber']}\nКлієнт: ${widget.orderData['clientName']}\nАдреса: ${widget.orderData['address']}\n\n";
     List doorsList = widget.orderData['doors'];
     for (var d in doorsList) {
-      htmlContent += """
-      <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
-        <p><b>Приміщення:</b> ${d['name']}</p>
-        <p>Полотно: ${d['canvasWidth']} x ${d['canvasHeight']} мм</p>
-        <p>Проріз (верх/низ/серед): ${d['openingWidthTop']} / ${d['openingWidthBottom']} / ${d['openingWidthMid']} мм</p>
-        <p>Висота прорізу (ліво/право): ${d['openingHeightLeft']} / ${d['openingHeightRight']} мм</p>
-        <p>Товщина стіни: ${d['wallThickTop']} мм, Коробка: ${d['boxWidth']}мм, Лиштва: ${d['architraveSize']}</p>
-        <p>Відкривання: ${d['openSide']}, ${d['openType']}</p>
-        <p>Петлі: ${d['hingeType']} (${d['hingeCount']} шт.), Замок: ${d['lockType']}</p>
-        <p><b>Ціна монтажу:</b> ${d['basePrice'] + d['extraPrice']} грн</p>
-      </div>
-      """;
+      htmlContent += "--- Приміщення: ${d['name']} ---\n";
+      htmlContent += "Полотно: ${d['canvasWidth']}x${d['canvasHeight']} мм\n";
+      htmlContent += "Проріз верх/серед/низ: ${d['openingWidthTop']}/${d['openingWidthMid']}/${d['openingWidthBottom']} мм\n";
+      htmlContent += "Висота ліво/право: ${d['openingHeightLeft']}/${d['openingHeightRight']} мм\n";
+      htmlContent += "Стіна верх/низ: ${d['wallThickTop']}/${d['wallThickBottom']} мм\n";
+      htmlContent += "Лиштва крило: ${d['architraveSize']}, Відкривання: ${d['openSide']}, ${d['openType']}\n";
+      htmlContent += "Монтаж: ${d['basePrice'] + d['extraPrice']} грн\n\n";
     }
-    htmlContent += "</body></html>";
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Експорт замовлення у Word'),
+        title: Text('Експорт замовлення'),
         content: SizedBox(
           width: double.maxFinite,
           child: SingleChildScrollView(
             child: Text(
-              'Ваше замовлення сформовано!\n\nСкопіюйте цей текст або вставте в документ Microsoft Word, зберігши як .doc файл, або надішліть клієнту:\n\n' +
-              'Замовлення: ${widget.orderData['orderNumber']}\nКлієнт: ${widget.orderData['clientName']}\nАдреса: ${widget.orderData['address']}\nКількість дверей: ${doorsList.length}',
+              'Скопіюйте замовлення та вставте його в Microsoft Word (або надішліть клієнту):\n\n$htmlContent',
             ),
           ),
         ),
@@ -222,9 +204,9 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
             onPressed: () {
               Clipboard.setData(ClipboardData(text: htmlContent));
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Дані скопійовано для Word!')));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скопійовано в буфер обміну!')));
             },
-            child: Text('Копіювати форматований текст'),
+            child: Text('Копіювати текст'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -334,7 +316,7 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
   }
 }
 
-// 3. Екран редагування з двома вкладками: 3D Двері та 3D Креслення Прорізу
+// 3. Екран редагування з двома вкладками
 class EditDoorScreen extends StatefulWidget {
   final Map<String, dynamic> doorData;
   EditDoorScreen({required this.doorData});
@@ -470,7 +452,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Вкладка 1: Дверне полотно, фурнитура та 3D модель
+          // Вкладка 1: Дверне полотно, фурнітура та 3D модель
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
@@ -569,7 +551,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
             ],
           ),
 
-          // Вкладка 2: Детальне об'ємне креслення прорізу (ширина зверх/низ/серед, висота ліво/право, стіна зверх/низ)
+          // Вкладка 2: Детальне об'ємне креслення прорізу
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
@@ -651,7 +633,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
   }
 }
 
-// 3D/Ізометричний відмальовник дверей з петлями та ручками
+// 3D Ізометричний відмальовник дверей
 class IsometricDoorPainter extends CustomPainter {
   final double canvasWidth;
   final double canvasHeight;
@@ -749,7 +731,7 @@ class IsometricDoorPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-// 3D Об'ємне креслення прорізу з показниками зверху/знизу/посередині/зліва/справа
+// 3D Об'ємне креслення прорізу
 class DetailedOpening3DPainter extends CustomPainter {
   final double opTop;
   final double opMid;
@@ -777,16 +759,14 @@ class DetailedOpening3DPainter extends CustomPainter {
     double cx = size.width / 2;
     double cy = size.height / 2;
 
-    // Об'ємний паралелепіпед отвору
     double w = 160.0;
     double h = 180.0;
-    double depth = 40.0; // ефект 3D об'єму
+    double depth = 40.0;
 
     Path openingBox = Path()
       ..addRect(Rect.fromCenter(center: Offset(cx, cy), width: w, height: h));
     canvas.drawPath(openingBox, paintOpening);
 
-    // З'єднувальні 3D лінії глибини стіни
     canvas.drawLine(Offset(cx - w/2, cy - h/2), Offset(cx - w/2 - depth, cy - h/2 - depth/2), paintOpening);
     canvas.drawLine(Offset(cx + w/2, cy - h/2), Offset(cx + w/2 + depth, cy - h/2 - depth/2), paintOpening);
     canvas.drawLine(Offset(cx - w/2, cy + h/2), Offset(cx - w/2 - depth, cy + h/2 - depth/2), paintOpening);
@@ -798,7 +778,6 @@ class DetailedOpening3DPainter extends CustomPainter {
       paintText.paint(canvas, Offset(x - paintText.width / 2, y - paintText.height / 2));
     }
 
-    // Виведення показників розмірів на об'ємному кресленні
     drawDim('Зверху: ${opTop.toStringAsFixed(0)} мм', cx, cy - h / 2 - 15);
     drawDim('Посередині: ${opMid.toStringAsFixed(0)} мм', cx, cy);
     drawDim('Знизу: ${opBot.toStringAsFixed(0)} мм', cx, cy + h / 2 + 18);
