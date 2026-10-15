@@ -16,10 +16,10 @@ class DoorInstallerApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Color(0xFFC8A278), // Теплий дерев'яний відтінок
-          primary: Color(0xFF8D6E63), // Колір світлого дуба / горіха
-          secondary: Color(0xFFD7CCC8), // Бежево-кремовий фон елементів
-          surface: Color(0xFFFAF7F2), // Текстурний світлий фон
+          seedColor: Color(0xFFC8A278),
+          primary: Color(0xFF8D6E63),
+          secondary: Color(0xFFD7CCC8),
+          surface: Color(0xFFFAF7F2),
         ),
         scaffoldBackgroundColor: Color(0xFFF7F4EF),
         appBarTheme: AppBarTheme(
@@ -777,7 +777,7 @@ class True3DCanvasPainter extends CustomPainter {
     final paintBox = Paint()..color = Color(0xFF5D4037)..style = PaintingStyle.stroke..strokeWidth = 3.0;
     final paintCanvas = Paint()..color = Color(0xFF8D6E63)..style = PaintingStyle.stroke..strokeWidth = 2.0;
     final paintCanvasFill = Paint()..color = Color(0xFFD7CCC8).withOpacity(0.3);
-    final paintHardware = Paint()..color = Color(0xFFD4AF37)..style = PaintingStyle.fill; // Золотиста фурнитура під дерево
+    final paintHardware = Paint()..color = Color(0xFFD4AF37)..style = PaintingStyle.fill;
     final paintHole = Paint()..color = Color(0xFF3E2723)..style = PaintingStyle.fill;
     final paintText = TextPainter(textDirection: TextDirection.ltr);
 
@@ -930,7 +930,7 @@ class True3DOpeningPainter extends CustomPainter {
     drawWallSide(fTL, fTR, bTR, bTL);
     drawWallSide(fTR, fBR, bBR, bTR);
     drawWallSide(fBR, fBL, bBL, bBR);
-    drawWallSide(fBL, fTL, tTL: bTL, bBL); // коректний виклик відкосу
+    drawWallSide(fBL, fTL, bTL, bBL); // Виправлено виклик без іменованих аргументів
 
     canvas.drawPath(backPath, paintBack);
     canvas.drawPath(frontPath, paintFront);
