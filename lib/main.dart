@@ -385,7 +385,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
             keyboardType: TextInputType.number,
             decoration: InputDecoration(labelText: 'Додаткові роботи (добори, лиштва тощо)'),
             controller: TextEditingController(text: _extraPrice.toString()),
-            onChanged: (val) => _extraPrice = double.tryScale ?? double.tryParse(val) ?? 0,
+            onChanged: (val) => _extraPrice = double.tryParse(val) ?? 0,
           ),
         ],
       ),
