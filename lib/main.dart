@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Потрібно для копіювання у буфер обміну
+import 'package:flutter/services.dart';
 import 'dart:math' as math;
 
 void main() {
@@ -123,7 +123,7 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
   }
 }
 
-// 2. Екран списку дверей у замовленні з експортом у Word
+// 2. Екран списку дверей у замовленні
 class ProjectDoorsScreen extends StatefulWidget {
   final Map<String, dynamic> orderData;
   ProjectDoorsScreen({required this.orderData});
@@ -316,7 +316,7 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
   }
 }
 
-// 3. Екран редагування з двома вкладками
+// 3. Екран редагування з обертовим 3D інтерактивним кресленням
 class EditDoorScreen extends StatefulWidget {
   final Map<String, dynamic> doorData;
   EditDoorScreen({required this.doorData});
@@ -355,6 +355,10 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
   
   double _basePrice = 1200.0;
   double _extraPrice = 400.0;
+
+  // Кути обертання для 3D жестів
+  double _rotateX = 0.0;
+  double _rotateY = 0.0;
 
   @override
   void initState() {
@@ -407,12 +411,12 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Двері та Креслення'),
+        title: Text('Двері та 3D Креслення'),
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: '3D Двері та Фурнітура', icon: Icon(Icons.door_sliding)),
-            Tab(text: '3D Креслення Прорізу', icon: Icon(Icons.architecture)),
+            Tab(text: '3D Полотно та Фурнітура', icon: Icon(Icons.door_sliding)),
+            Tab(text: '3D Проріз (Обертовий)', icon: Icon(Icons.architecture)),
           ],
         ),
         actions: [
@@ -452,7 +456,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Вкладка 1: Дверне полотно, фурнітура та 3D модель
+          // Вкладка 1: Пропорційне полотно з фурнітурою
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
@@ -461,7 +465,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                 decoration: InputDecoration(labelText: 'Назва приміщення (напр. Спальня)'),
               ),
               SizedBox(height: 16),
-              Text('3D Візуалізація полотна та фурнітури', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('Пропорційне полотно та фурнітура', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               SizedBox(height: 8),
               Container(
                 height: 280,
@@ -471,19 +475,17 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: CustomPaint(
-                  painter: IsometricDoorPainter(
+                  painter: ProportionalCanvasPainter(
                     canvasWidth: cWidth,
                     canvasHeight: cHeight,
                     openWidth: opMid,
                     openHeight: (opHLeft + opHRight) / 2,
                     wallThick: (wallTop + wallBot) / 2,
                     boxWidth: boxW,
-                    boxDepth: boxD,
                     architraveSize: _architraveSize,
                     openSide: _openSide,
                     openType: _openType,
                     hingeCount: hCount,
-                    hingeType: _hingeType,
                     hasHandle: _hasHandle,
                     hasLatch: _hasLatch,
                     hasKey: _hasKey,
@@ -551,32 +553,57 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
             ],
           ),
 
-          // Вкладка 2: Детальне об'ємне креслення прорізу
+          // Вкладка 2: Інтерактивний 3D проріз із жестами обертання та пропорціями
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
-              Text('Об\'ємне креслення прорізу з точними показниками', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('Крутіть пальцем для огляду збоку/зверху (3D інтерактив)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               SizedBox(height: 8),
-              Container(
-                height: 300,
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey[50],
-                  border: Border.all(color: Colors.blueGrey, width: 2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: CustomPaint(
-                  painter: DetailedOpening3DPainter(
-                    opTop: opTop,
-                    opMid: opMid,
-                    opBot: opBot,
-                    opHLeft: opHLeft,
-                    opHRight: opHRight,
-                    wallTop: wallTop,
-                    wallBot: wallBot,
+              GestureDetector(
+                onPanUpdate: (details) {
+                  setState(() {
+                    _rotateY += details.delta.dx * 0.015;
+                    _rotateX -= details.delta.dy * 0.015;
+                  });
+                },
+                child: Container(
+                  height: 300,
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey[50],
+                    border: Border.all(color: Colors.blueGrey, width: 2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Transform(
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.001)
+                        ..rotateX(_rotateX)
+                        ..rotateY(_rotateY),
+                      alignment: Alignment.center,
+                      child: CustomPaint(
+                        size: Size(250, 250),
+                        painter: Interactive3DOpeningPainter(
+                          opTop: opTop,
+                          opMid: opMid,
+                          opBot: opBot,
+                          opHLeft: opHLeft,
+                          opHRight: opHRight,
+                          wallTop: wallTop,
+                          wallBot: wallBot,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => setState(() { _rotateX = 0.0; _rotateY = 0.0; }),
+                  icon: Icon(Icons.refresh),
+                  label: Text('Скинути положення обертання'),
+                ),
+              ),
+              SizedBox(height: 10),
 
               Text('Ширина прорізу (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               Row(
@@ -610,7 +637,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
               ),
               SizedBox(height: 16),
 
-              Text('Коробка, добір та лиштва', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('Коробка та добір', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               Row(
                 children: [
                   Expanded(child: TextField(controller: _boxWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина коробки'), onChanged: (v) => setState(() {}))),
@@ -633,37 +660,33 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
   }
 }
 
-// 3D Ізометричний відмальовник дверей
-class IsometricDoorPainter extends CustomPainter {
+// Пропорційний рендер полотна з урахуванням введених мір
+class ProportionalCanvasPainter extends CustomPainter {
   final double canvasWidth;
   final double canvasHeight;
   final double openWidth;
   final double openHeight;
   final double wallThick;
   final double boxWidth;
-  final double boxDepth;
   final String architraveSize;
   final String openSide;
   final String openType;
   final int hingeCount;
-  final String hingeType;
   final bool hasHandle;
   final bool hasLatch;
   final bool hasKey;
 
-  IsometricDoorPainter({
+  ProportionalCanvasPainter({
     required this.canvasWidth,
     required this.canvasHeight,
     required this.openWidth,
     required this.openHeight,
     required this.wallThick,
     required this.boxWidth,
-    required this.boxDepth,
     required this.architraveSize,
     required this.openSide,
     required this.openType,
     required this.hingeCount,
-    required this.hingeType,
     required this.hasHandle,
     required this.hasLatch,
     required this.hasKey,
@@ -671,28 +694,21 @@ class IsometricDoorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paintWall = Paint()..color = Colors.blueGrey.shade700..style = PaintingStyle.stroke..strokeWidth = 3.0;
     final paintCanvas = Paint()..color = Colors.blue.shade600..style = PaintingStyle.stroke..strokeWidth = 2.0;
     final paintHardware = Paint()..color = Colors.amber.shade800..style = PaintingStyle.fill;
     final paintHole = Paint()..color = Colors.black87..style = PaintingStyle.fill;
     final paintText = TextPainter(textDirection: TextDirection.ltr);
 
     double cx = size.width / 2;
-    double cy = size.height / 2 + 20;
+    double cy = size.height / 2 + 10;
 
-    double wBox = openWidth * 0.12;
-    double hBox = openHeight * 0.08;
+    // Розрахунок пропорцій на основі реальних цифр полотна
+    double maxDim = math.max(canvasWidth, canvasHeight);
+    double scale = 160.0 / (maxDim > 0 ? maxDim : 1000.0);
 
-    Path wallPath = Path()
-      ..moveTo(cx - wBox / 2, cy - hBox / 2)
-      ..lineTo(cx + wBox / 2, cy - hBox / 2)
-      ..lineTo(cx + wBox / 2, cy + hBox / 2)
-      ..lineTo(cx - wBox / 2, cy + hBox / 2)
-      ..close();
-    canvas.drawPath(wallPath, paintWall);
+    double cW = canvasWidth * scale;
+    double cH = canvasHeight * scale;
 
-    double cW = canvasWidth * 0.12;
-    double cH = canvasHeight * 0.08;
     Rect doorRect = Rect.fromCenter(center: Offset(cx, cy), width: cW, height: cH);
     canvas.drawRect(doorRect, paintCanvas);
 
@@ -701,20 +717,20 @@ class IsometricDoorPainter extends CustomPainter {
     
     for (int i = 0; i < hingeCount; i++) {
       double hY = cy + (i - (hingeCount - 1) / 2) * (cH / 3);
-      canvas.drawCircle(Offset(hingeX, hY), 4.0, paintHardware);
+      canvas.drawCircle(Offset(hingeX, hY), 3.5, paintHardware);
     }
 
     double handleX = isRight ? (cx - cW / 3) : (cx + cW / 3);
     double handleY = cy;
 
     if (hasHandle) {
-      canvas.drawCircle(Offset(handleX, handleY), 6.0, paintHardware);
+      canvas.drawCircle(Offset(handleX, handleY), 5.0, paintHardware);
     }
     if (hasLatch) {
-      canvas.drawCircle(Offset(handleX, handleY + 25), 4.0, paintHole);
+      canvas.drawCircle(Offset(handleX, handleY + 22), 3.5, paintHole);
     }
     if (hasKey) {
-      canvas.drawRect(Rect.fromCenter(center: Offset(handleX, handleY + 45), width: 4, height: 10), paintHole);
+      canvas.drawRect(Rect.fromCenter(center: Offset(handleX, handleY + 38), width: 4, height: 8), paintHole);
     }
 
     void drawDim(String text, double x, double y) {
@@ -723,16 +739,15 @@ class IsometricDoorPainter extends CustomPainter {
       paintText.paint(canvas, Offset(x - paintText.width / 2, y - paintText.height / 2));
     }
 
-    drawDim('Полотно: ${canvasWidth.toStringAsFixed(0)} x ${canvasHeight.toStringAsFixed(0)} мм', cx, cy + hBox / 2 + 15);
-    drawDim('Стіна: ${wallThick.toStringAsFixed(0)} мм | Коробка: ${boxWidth.toStringAsFixed(0)}мм', cx, cy + hBox / 2 + 32);
+    drawDim('Полотно: ${canvasWidth.toStringAsFixed(0)} x ${canvasHeight.toStringAsFixed(0)} мм', cx, cy + cH / 2 + 15);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-// 3D Об'ємне креслення прорізу
-class DetailedOpening3DPainter extends CustomPainter {
+// Інтерактивний 3D проріз з пропорційним масштабуванням зверху/знизу/посередині
+class Interactive3DOpeningPainter extends CustomPainter {
   final double opTop;
   final double opMid;
   final double opBot;
@@ -741,7 +756,7 @@ class DetailedOpening3DPainter extends CustomPainter {
   final double wallTop;
   final double wallBot;
 
-  DetailedOpening3DPainter({
+  Interactive3DOpeningPainter({
     required this.opTop,
     required this.opMid,
     required this.opBot,
@@ -753,40 +768,47 @@ class DetailedOpening3DPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paintOpening = Paint()..color = Colors.indigo.shade700..style = PaintingStyle.stroke..strokeWidth = 3.0;
+    final paintOpening = Paint()..color = Colors.indigo.shade700..style = PaintingStyle.stroke..strokeWidth = 2.5;
     final paintText = TextPainter(textDirection: TextDirection.ltr);
 
     double cx = size.width / 2;
     double cy = size.height / 2;
 
-    double w = 160.0;
-    double h = 180.0;
-    double depth = 40.0;
+    // Пропорційне масштабування за шириною та висотою отвору
+    double maxW = math.max(math.max(opTop, opMid), opBot);
+    double maxH = math.max(opHLeft, opHRight);
+    double scaleW = 140.0 / (maxW > 0 ? maxW : 900.0);
+    double scaleH = 160.0 / (maxH > 0 ? maxH : 2100.0);
 
-    Path openingBox = Path()
-      ..addRect(Rect.fromCenter(center: Offset(cx, cy), width: w, height: h));
-    canvas.drawPath(openingBox, paintOpening);
+    double wTop = opTop * scaleW;
+    double wMid = opMid * scaleW;
+    double wBot = opBot * scaleW;
+    double hLeft = opHLeft * scaleH;
+    double hRight = opHRight * scaleH;
 
-    canvas.drawLine(Offset(cx - w/2, cy - h/2), Offset(cx - w/2 - depth, cy - h/2 - depth/2), paintOpening);
-    canvas.drawLine(Offset(cx + w/2, cy - h/2), Offset(cx + w/2 + depth, cy - h/2 - depth/2), paintOpening);
-    canvas.drawLine(Offset(cx - w/2, cy + h/2), Offset(cx - w/2 - depth, cy + h/2 - depth/2), paintOpening);
-    canvas.drawLine(Offset(cx + w/2, cy + h/2), Offset(cx + w/2 + depth, cy + h/2 - depth/2), paintOpening);
+    // Формуємо нерівний контур отвору за введеними точними мірами
+    Path openingPath = Path()
+      ..moveTo(cx - wTop / 2, cy - hLeft / 2)
+      ..lineTo(cx + wTop / 2, cy - hRight / 2)
+      ..lineTo(cx + wBot / 2, cy + hRight / 2)
+      ..lineTo(cx - wBot / 2, cy + hLeft / 2)
+      ..close();
 
+    canvas.drawPath(openingPath, paintOpening);
+
+    // Додаємо лінійки та цифри показників
     void drawDim(String text, double x, double y) {
-      paintText.text = TextSpan(text: text, style: TextStyle(color: Colors.blueGrey.shade900, fontSize: 10, fontWeight: FontWeight.bold));
+      paintText.text = TextSpan(text: text, style: TextStyle(color: Colors.blueGrey.shade900, fontSize: 9, fontWeight: FontWeight.bold));
       paintText.layout();
       paintText.paint(canvas, Offset(x - paintText.width / 2, y - paintText.height / 2));
     }
 
-    drawDim('Зверху: ${opTop.toStringAsFixed(0)} мм', cx, cy - h / 2 - 15);
-    drawDim('Посередині: ${opMid.toStringAsFixed(0)} мм', cx, cy);
-    drawDim('Знизу: ${opBot.toStringAsFixed(0)} мм', cx, cy + h / 2 + 18);
+    drawDim('Зверху: ${opTop.toStringAsFixed(0)} мм', cx, cy - hLeft / 2 - 14);
+    drawDim('Посер: ${opMid.toStringAsFixed(0)} мм', cx, cy);
+    drawDim('Знизу: ${opBot.toStringAsFixed(0)} мм', cx, cy + hLeft / 2 + 14);
     
-    drawDim('Висота зліва: ${opHLeft.toStringAsFixed(0)} мм', cx - w / 2 - 45, cy);
-    drawDim('Висота справа: ${opHRight.toStringAsFixed(0)} мм', cx + w / 2 + 45, cy);
-
-    drawDim('Стіна зверху: ${wallTop.toStringAsFixed(0)} мм', cx - 60, cy - h / 2 - depth/2 - 10);
-    drawDim('Стіна знизу: ${wallBot.toStringAsFixed(0)} мм', cx + 60, cy + h / 2 + depth/2 + 10);
+    drawDim('Ліва: ${opHLeft.toStringAsFixed(0)}', cx - maxW * scaleW / 2 - 35, cy);
+    drawDim('Права: ${opHRight.toStringAsFixed(0)}', cx + maxW * scaleW / 2 + 35, cy);
   }
 
   @override
