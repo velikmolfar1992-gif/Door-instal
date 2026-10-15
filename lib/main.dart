@@ -14,52 +14,142 @@ class DoorInstallerApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Color(0xFFF5F7FA),
       ),
-      home: DoorProjectScreen(),
+      home: OrdersListScreen(),
     );
   }
 }
 
-class DoorProjectScreen extends StatefulWidget {
+// 1. Екран списку замовлень (проєктів)
+class OrdersListScreen extends StatefulWidget {
   @override
-  _DoorProjectScreenState createState() => _DoorProjectScreenState();
+  _OrdersListScreenState createState() => _OrdersListScreenState();
 }
 
-class _DoorProjectScreenState extends State<DoorProjectScreen> {
-  String clientName = "Іван Петренко";
-  String orderNumber = "№ 2026-001";
-
-  final List<Map<String, dynamic>> doors = [
+class _OrdersListScreenState extends State<OrdersListScreen> {
+  final List<Map<String, dynamic>> orders = [
     {
-      'name': 'Спальня',
-      'width': 800.0,
-      'height': 2000.0,
-      'wallThick': 160.0,
-      'boxWidth': 80.0,
-      'boxDepth': 40.0,
-      'doborWidth': 70.0,
-      'openSide': 'Праве',
-      'openType': 'Зовнішнє',
-      'hingeType': 'Приховані',
-      'hingeCount': '3',
-      'lockType': 'Магнітний',
-      'hasHandle': true,
-      'hasLatch': false,
-      'hasKey': false,
-      'basePrice': 1200.0,
-      'extraPrice': 400.0,
+      'orderNumber': '№ 2026-001',
+      'clientName': 'Іван Петренко',
+      'address': 'вул. Шевченка, 10',
+      'doors': [
+        {
+          'name': 'Спальня',
+          'openingWidth': 800.0,
+          'openingHeight': 2000.0,
+          'canvasWidth': 700.0,
+          'canvasHeight': 1960.0,
+          'wallThick': 160.0,
+          'boxWidth': 80.0,
+          'boxDepth': 40.0,
+          'doborWidth': 70.0,
+          'architraveSize': '70 мм',
+          'openSide': 'Праве',
+          'openType': 'Зовнішнє',
+          'hingeType': 'Приховані',
+          'hingeCount': '3',
+          'lockType': 'Магнітний',
+          'hasHandle': true,
+          'hasLatch': false,
+          'hasKey': false,
+          'basePrice': 1200.0,
+          'extraPrice': 400.0,
+        }
+      ]
     }
   ];
 
+  void _addNewOrder() {
+    String newOrderNum = '№ 2026-00${orders.length + 1}';
+    setState(() {
+      orders.add({
+        'orderNumber': newOrderNum,
+        'clientName': 'Новий клієнт',
+        'address': 'Адреса об\'єкта',
+        'doors': []
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Список замовлень (проєктів)'),
+      ),
+      body: ListView.builder(
+        itemCount: orders.length,
+        itemBuilder: (context, index) {
+          final order = orders[index];
+          List doorsList = order['doors'];
+          double orderTotal = doorsList.fold(0, (sum, d) => sum + (d['basePrice'] + d['extraPrice']));
+
+          return Card(
+            margin: EdgeInsets.all(8.0),
+            elevation: 3,
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.indigo,
+                child: Icon(Icons.folder, color: Colors.white),
+              ),
+              title: Text('${order['orderNumber']} — ${order['clientName']}', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('Адреса: ${order['address']}\nКількість дверей: ${doorsList.length} | Сума: ${orderTotal.toStringAsFixed(0)} грн'),
+              isThreeLine: true,
+              trailing: Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProjectDoorsScreen(orderData: order),
+                  ),
+                );
+                setState(() {});
+              },
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addNewOrder,
+        child: Icon(Icons.add),
+        tooltip: 'Створити нове замовлення',
+      ),
+    );
+  }
+}
+
+// 2. Екран списку дверей у конкретному замовленні
+class ProjectDoorsScreen extends StatefulWidget {
+  final Map<String, dynamic> orderData;
+  ProjectDoorsScreen({required this.orderData});
+
+  @override
+  _ProjectDoorsScreenState createState() => _ProjectDoorsScreenState();
+}
+
+class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
+  late TextEditingController _clientController;
+  late TextEditingController _addressController;
+
+  @override
+  void initState() {
+    super.initState();
+    _clientController = TextEditingController(text: widget.orderData['clientName']);
+    _addressController = TextEditingController(text: widget.orderData['address']);
+  }
+
   void _addNewDoor() {
     setState(() {
-      doors.add({
-        'name': 'Двері ${doors.length + 1}',
-        'width': 700.0,
-        'height': 2000.0,
+      widget.orderData['doors'].add({
+        'name': 'Двері ${widget.orderData['doors'].length + 1}',
+        'openingWidth': 800.0,
+        'openingHeight': 2000.0,
+        'canvasWidth': 700.0,
+        'canvasHeight': 1960.0,
         'wallThick': 100.0,
         'boxWidth': 80.0,
         'boxDepth': 40.0,
         'doborWidth': 0.0,
+        'architraveSize': '70 мм',
         'openSide': 'Ліві',
         'openType': 'Зовнішнє',
         'hingeType': 'Бабочки',
@@ -76,17 +166,12 @@ class _DoorProjectScreenState extends State<DoorProjectScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double totalProjectPrice = doors.fold(0, (sum, item) => sum + (item['basePrice'] + item['extraPrice']));
+    List doorsList = widget.orderData['doors'];
+    double totalProjectPrice = doorsList.fold(0, (sum, item) => sum + (item['basePrice'] + item['extraPrice']));
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Замовлення: $orderNumber', style: TextStyle(fontSize: 14)),
-            Text('Клієнт: $clientName', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ],
-        ),
+        title: Text('Замовлення: ${widget.orderData['orderNumber']}'),
         actions: [
           Center(
             child: Padding(
@@ -99,52 +184,82 @@ class _DoorProjectScreenState extends State<DoorProjectScreen> {
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: doors.length,
-        itemBuilder: (context, index) {
-          final door = doors[index];
-          double doorTotal = (door['basePrice'] as double) + (door['extraPrice'] as double);
-          
-          return Card(
-            margin: EdgeInsets.all(8.0),
-            elevation: 2,
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.blueAccent,
-                child: Icon(Icons.door_sliding, color: Colors.white),
-              ),
-              title: Text(door['name'], style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(
-                'Проріз: ${door['width']}x${door['height']} мм | Стіна: ${door['wallThick']} мм\nКоробка: ${door['boxWidth']}x${door['boxDepth']} мм | Добір: ${door['doborWidth']} мм\nМонтаж: ${doorTotal.toStringAsFixed(0)} грн',
-              ),
-              isThreeLine: true,
-              trailing: Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () async {
-                final updatedDoor = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EditDoorScreen(doorData: door),
+      body: Column(
+        children: [
+          // Інформація про клієнта
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _clientController,
+                    decoration: InputDecoration(labelText: 'Ім\'я клієнта'),
+                    onChanged: (val) => widget.orderData['clientName'] = val,
+                  ),
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _addressController,
+                    decoration: InputDecoration(labelText: 'Адреса об\'єкта'),
+                    onChanged: (val) => widget.orderData['address'] = val,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(),
+          Expanded(
+            child: ListView.builder(
+              itemCount: doorsList.length,
+              itemBuilder: (context, index) {
+                final door = doorsList[index];
+                double doorTotal = (door['basePrice'] as double) + (door['extraPrice'] as double);
+                
+                return Card(
+                  margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.blueAccent,
+                      child: Icon(Icons.door_sliding, color: Colors.white),
+                    ),
+                    title: Text(door['name'], style: TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(
+                      'Полотно: ${door['canvasWidth']}x${door['canvasHeight']} мм | Лиштва: ${door['architraveSize']}\nМонтаж: ${doorTotal.toStringAsFixed(0)} грн',
+                    ),
+                    isThreeLine: true,
+                    trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () async {
+                      final updatedDoor = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditDoorScreen(doorData: door),
+                        ),
+                      );
+                      if (updatedDoor != null) {
+                        setState(() {
+                          doorsList[index] = updatedDoor;
+                        });
+                      }
+                    },
                   ),
                 );
-                if (updatedDoor != null) {
-                  setState(() {
-                    doors[index] = updatedDoor;
-                  });
-                }
               },
             ),
-          );
-        },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addNewDoor,
         child: Icon(Icons.add),
-        tooltip: 'Додати двері',
+        tooltip: 'Додати двері в замовлення',
       ),
     );
   }
 }
 
+// 3. Екран редагування дверей, розмірів полотна та лиштви
 class EditDoorScreen extends StatefulWidget {
   final Map<String, dynamic> doorData;
   EditDoorScreen({required this.doorData});
@@ -155,13 +270,16 @@ class EditDoorScreen extends StatefulWidget {
 
 class _EditDoorScreenState extends State<EditDoorScreen> {
   late TextEditingController _nameController;
-  late TextEditingController _widthController;
-  late TextEditingController _heightController;
+  late TextEditingController _openWidthController;
+  late TextEditingController _openHeightController;
+  late TextEditingController _canvasWidthController;
+  late TextEditingController _canvasHeightController;
   late TextEditingController _wallController;
   late TextEditingController _boxWidthController;
   late TextEditingController _boxDepthController;
   late TextEditingController _doborWidthController;
   
+  String _architraveSize = '70 мм';
   String _openSide = 'Праве';
   String _openType = 'Зовнішнє';
   String _hingeType = 'Приховані';
@@ -179,13 +297,16 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.doorData['name']);
-    _widthController = TextEditingController(text: widget.doorData['width'].toString());
-    _heightController = TextEditingController(text: widget.doorData['height'].toString());
+    _openWidthController = TextEditingController(text: widget.doorData['openingWidth'].toString());
+    _openHeightController = TextEditingController(text: widget.doorData['openingHeight'].toString());
+    _canvasWidthController = TextEditingController(text: widget.doorData['canvasWidth'].toString());
+    _canvasHeightController = TextEditingController(text: widget.doorData['canvasHeight'].toString());
     _wallController = TextEditingController(text: widget.doorData['wallThick'].toString());
     _boxWidthController = TextEditingController(text: widget.doorData['boxWidth'].toString());
     _boxDepthController = TextEditingController(text: widget.doorData['boxDepth'].toString());
     _doborWidthController = TextEditingController(text: widget.doorData['doborWidth'].toString());
     
+    _architraveSize = widget.doorData['architraveSize'] ?? '70 мм';
     _openSide = widget.doorData['openSide'];
     _openType = widget.doorData['openType'];
     _hingeType = widget.doorData['hingeType'];
@@ -198,42 +319,33 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
     _extraPrice = widget.doorData['extraPrice'];
   }
 
-  Map<String, dynamic> calculateMaterials() {
-    int architravesPieces = 5; // На дві сторони
-    int boxPieces = 3;
-    double doborMeters = (double.tryParse(_doborWidthController.text) ?? 0) > 0 ? 5.0 : 0.0;
-
-    return {
-      'boxPieces': boxPieces,
-      'architravesPieces': architravesPieces,
-      'doborMeters': doborMeters,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
-    final mats = calculateMaterials();
-    double currentWidth = double.tryParse(_widthController.text) ?? 800;
-    double currentHeight = double.tryParse(_heightController.text) ?? 2000;
-    double currentWall = double.tryParse(_wallController.text) ?? 100;
-    double currentBoxW = double.tryParse(_boxWidthController.text) ?? 80;
-    double currentBoxD = double.tryParse(_boxDepthController.text) ?? 40;
-    double currentDobor = double.tryParse(_doborWidthController.text) ?? 0;
+    double cWidth = double.tryParse(_canvasWidthController.text) ?? 700;
+    double cHeight = double.tryParse(_canvasHeightController.text) ?? 1960;
+    double oWidth = double.tryParse(_openWidthController.text) ?? 800;
+    double oHeight = double.tryParse(_openHeightController.text) ?? 2000;
+    double wall = double.tryParse(_wallController.text) ?? 100;
+    double boxW = double.tryParse(_boxWidthController.text) ?? 80;
+    double doborW = double.tryParse(_doborWidthController.text) ?? 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Редагування прорізу та креслення'),
+        title: Text('Параметри дверей та прорізу'),
         actions: [
           IconButton(
             icon: Icon(Icons.save),
             onPressed: () {
               widget.doorData['name'] = _nameController.text;
-              widget.doorData['width'] = currentWidth;
-              widget.doorData['height'] = currentHeight;
-              widget.doorData['wallThick'] = currentWall;
-              widget.doorData['boxWidth'] = currentBoxW;
-              widget.doorData['boxDepth'] = currentBoxD;
-              widget.doorData['doborWidth'] = currentDobor;
+              widget.doorData['openingWidth'] = oWidth;
+              widget.doorData['openingHeight'] = oHeight;
+              widget.doorData['canvasWidth'] = cWidth;
+              widget.doorData['canvasHeight'] = cHeight;
+              widget.doorData['wallThick'] = wall;
+              widget.doorData['boxWidth'] = boxW;
+              widget.doorData['boxDepth'] = double.tryParse(_boxDepthController.text) ?? 40;
+              widget.doorData['doborWidth'] = doborW;
+              widget.doorData['architraveSize'] = _architraveSize;
               widget.doorData['openSide'] = _openSide;
               widget.doorData['openType'] = _openType;
               widget.doorData['hingeType'] = _hingeType;
@@ -258,19 +370,30 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
             decoration: InputDecoration(labelText: 'Назва приміщення (напр. Спальня)'),
           ),
           SizedBox(height: 16),
+          
+          Text('Розміри дверного полотна (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Row(
+            children: [
+              Expanded(child: TextField(controller: _canvasWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина полотна'), onChanged: (v) => setState(() {}))),
+              SizedBox(width: 10),
+              Expanded(child: TextField(controller: _canvasHeightController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Висота полотна'), onChanged: (v) => setState(() {}))),
+            ],
+          ),
+          SizedBox(height: 16),
+
           Text('Розміри прорізу (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Row(
             children: [
-              Expanded(child: TextField(controller: _widthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина'), onChanged: (v) => setState(() {}))),
+              Expanded(child: TextField(controller: _openWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина прорізу'), onChanged: (v) => setState(() {}))),
               SizedBox(width: 10),
-              Expanded(child: TextField(controller: _heightController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Висота'), onChanged: (v) => setState(() {}))),
+              Expanded(child: TextField(controller: _openHeightController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Висота прорізу'), onChanged: (v) => setState(() {}))),
               SizedBox(width: 10),
               Expanded(child: TextField(controller: _wallController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Товщ. стіни'), onChanged: (v) => setState(() {}))),
             ],
           ),
-          SizedBox(height: 12),
+          SizedBox(height: 16),
           
-          Text('Параметри коробки та добору (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text('Коробка, добір та лиштва', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Row(
             children: [
               Expanded(child: TextField(controller: _boxWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина коробки'), onChanged: (v) => setState(() {}))),
@@ -279,6 +402,15 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
               SizedBox(width: 10),
               Expanded(child: TextField(controller: _doborWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина добору'), onChanged: (v) => setState(() {}))),
             ],
+          ),
+          SizedBox(height: 12),
+          
+          // Вибір розміру лиштви (крило)
+          DropdownButtonFormField<String>(
+            value: _architraveSize,
+            decoration: InputDecoration(labelText: 'Розмір лиштви (крило)'),
+            items: ['30 мм', '50 мм', '70 мм'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+            onChanged: (val) => setState(() => _architraveSize = val!),
           ),
           SizedBox(height: 16),
           
@@ -305,8 +437,8 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           ),
           SizedBox(height: 20),
           
-          // Деталізоване 2D креслення з розмірами
-          Text('Деталізоване 2D креслення з розмірами', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          // Візуальне 2D креслення з розмірами полотна та отвору
+          Text('Візуальне 2D креслення', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           SizedBox(height: 8),
           Container(
             height: 240,
@@ -317,11 +449,12 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
             ),
             child: CustomPaint(
               painter: DetailedDoorPainter(
-                width: currentWidth,
-                height: currentHeight,
-                wallThick: currentWall,
-                boxWidth: currentBoxW,
-                doborWidth: currentDobor,
+                canvasWidth: cWidth,
+                canvasHeight: cHeight,
+                wallThick: wall,
+                boxWidth: boxW,
+                doborWidth: doborW,
+                architraveSize: _architraveSize,
                 openSide: _openSide,
                 openType: _openType,
               ),
@@ -329,25 +462,6 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           ),
           SizedBox(height: 20),
 
-          // Розрахунок матеріалів
-          Card(
-            color: Colors.blue[50],
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('📦 Розрахунок необхідних матеріалів:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.blue[900])),
-                  SizedBox(height: 6),
-                  Text('• Коробка: ${mats['boxPieces']} шт. (розмір: ${currentBoxW}x${currentBoxD} мм)'),
-                  Text('• Лиштва: ${mats['architravesPieces']} пал. (на дві сторони)'),
-                  Text('• Добір: ${mats['doborMeters']} м.п. (ширина: ${currentDobor} мм)'),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-          
           Text('Фурнітура та отвори', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           DropdownButtonFormField<String>(
             value: _hingeType,
@@ -404,22 +518,24 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
   }
 }
 
-// Детальний відмальовник креслення з лінійками розмірів (знизу, зверху, зліва, справа)
+// 2D Креслення з параметрами полотна та лиштви
 class DetailedDoorPainter extends CustomPainter {
-  final double width;
-  final double height;
+  final double canvasWidth;
+  final double canvasHeight;
   final double wallThick;
   final double boxWidth;
   final double doborWidth;
+  final String architraveSize;
   final String openSide;
   final String openType;
 
   DetailedDoorPainter({
-    required this.width,
-    required this.height,
+    required this.canvasWidth,
+    required this.canvasHeight,
     required this.wallThick,
     required this.boxWidth,
     required this.doborWidth,
+    required this.architraveSize,
     required this.openSide,
     required this.openType,
   });
@@ -440,18 +556,14 @@ class DetailedDoorPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     );
 
-    // Центруємо схему прорізу всередині віджету
     final double rectLeft = size.width * 0.25;
     final double rectTop = size.height * 0.2;
     final double rectWidth = size.width * 0.5;
     final double rectHeight = size.height * 0.6;
 
     final rect = Rect.fromLTWH(rectLeft, rectTop, rectWidth, rectHeight);
-    
-    // Малюємо рамку прорізу
     canvas.drawRect(rect, paintWall);
 
-    // Малюємо дугу відкривання дверей всередині
     Path path = Path();
     if (openSide == 'Праве') {
       if (openType == 'Зовнішнє') {
@@ -472,7 +584,6 @@ class DetailedDoorPainter extends CustomPainter {
     }
     canvas.drawPath(path, paintDoor);
 
-    // Функція виведення тексту розмірів
     void drawDimension(String text, double x, double y, {bool vertical = false}) {
       paintText.text = TextSpan(
         text: text,
@@ -482,27 +593,18 @@ class DetailedDoorPainter extends CustomPainter {
       canvas.save();
       canvas.translate(x, y);
       if (vertical) {
-        canvas.rotate(-math.pi / 2);
+        canvas.rotate(-3.1415926535897932 / 2);
       }
       paintText.paint(canvas, Offset(-paintText.width / 2, -paintText.height / 2));
       canvas.restore();
     }
 
-    // Розмір ЗНИЗУ (Ширина прорізу)
-    drawDimension('Шир: ${width.toStringAsFixed(0)} мм', rect.center.dx, rect.bottom + 15);
-    // Розмір ЗВЕРХУ (Коробка та добір)
-    drawDimension('Коробка: ${boxWidth.toStringAsFixed(0)}мм | Добір: ${doborWidth.toStringAsFixed(0)}мм', rect.center.dx, rect.top - 15);
-    // Розмір ЗЛІВА (Висота прорізу)
-    drawDimension('Висота: ${height.toStringAsFixed(0)} мм', rect.left - 22, rect.center.dy, vertical: true);
-    // Розмір СПРАВА (Товщина стіни)
+    drawDimension('Полотно: ${canvasWidth.toStringAsFixed(0)} мм', rect.center.dx, rect.bottom + 15);
+    drawDimension('Лиштва: $architraveSize | Добір: ${doborWidth.toStringAsFixed(0)}мм', rect.center.dx, rect.top - 15);
+    drawDimension('Висота: ${canvasHeight.toStringAsFixed(0)} мм', rect.left - 22, rect.center.dy, vertical: true);
     drawDimension('Стіна: ${wallThick.toStringAsFixed(0)} мм', rect.right + 22, rect.center.dy, vertical: true);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-// Допоміжний клас для математичного обертання тексту на лінійках
-class math {
-  static const double pi = 3.1415926535897932;
 }
