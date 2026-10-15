@@ -368,7 +368,7 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
   }
 }
 
-// 3. Екран редагування
+// 3. Екран редагування з 3 вкладками
 class EditDoorScreen extends StatefulWidget {
   final Map<String, dynamic> doorData;
   EditDoorScreen({required this.doorData});
@@ -414,7 +414,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this); // 3 вкладки
 
     _nameController = TextEditingController(text: widget.doorData['name']);
     _opTopController = TextEditingController(text: widget.doorData['openingWidthTop'].toString());
@@ -460,6 +460,19 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
     double doborW = double.tryParse(_doborWidthController.text) ?? 0;
     int hCount = int.tryParse(_hingeCount) ?? 3;
 
+    // Розрахунок матеріалів відповідно до розмірів прорізу та стіни
+    double avgHeight = (opHLeft + opHRight) / 2;
+    double avgWidth = (opTop + opMid + opBot) / 3;
+    double avgWall = (wallTop + wallBot) / 2;
+
+    // 1. Коробка (2 стійки по висоті прорізу + 1 поперечина по ширині)
+    double boxMeters = (avgHeight * 2 + avgWidth) / 1000 * 1.1; // з урахуванням запасу 10%
+    // 2. Лиштва (потрібна з двох боків: 2 стійки та 1 поперечина на кожен бік = 6 палок)
+    double architravePieces = 6.0;
+    // 3. Добір (якщо товщина стіни перевищує стандартну коробку ~80мм, додаємо добір)
+    bool needsDobor = avgWall > 90.0;
+    double doborMeters = needsDobor ? (avgHeight * 2 + avgWidth) / 1000 * 1.1 : 0.0;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Конфігурація Дверей'),
@@ -471,6 +484,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
           tabs: [
             Tab(text: '3D Полотно', icon: Icon(Icons.door_sliding_rounded)),
             Tab(text: '3D Проріз', icon: Icon(Icons.architecture_rounded)),
+            Tab(text: 'Калькулятор', icon: Icon(Icons.calculate_rounded)),
           ],
         ),
         actions: [
@@ -510,6 +524,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabController,
         children: [
+          // Вкладка 1: 3D Полотно
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
@@ -531,7 +546,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                   painter: True3DCanvasPainter(
                     canvasWidth: cWidth,
                     canvasHeight: cHeight,
-                    wallDepth: (wallTop + wallBot) / 2,
+                    wallDepth: avgWall,
                     openAngle: 45.0,
                     openSide: _openSide,
                     openType: _openType,
@@ -636,6 +651,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
             ],
           ),
 
+          // Вкладка 2: 3D Проріз
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
@@ -722,13 +738,13 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
               ),
               SizedBox(height: 16),
 
-              Text('Коробка та добір', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF3E2723))),
+              Text('Параметри коробки', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF3E2723))),
               SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(child: TextField(controller: _boxWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина коробки'), onChanged: (v) => setState(() {}))),
                   SizedBox(width: 10),
-                  Expanded(child: TextField(controller: _doborWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина добору'), onChanged: (v) => setState(() {}))),
+                  Expanded(child: TextField(controller: _boxDepthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Глибина коробки'), onChanged: (v) => setState(() {}))),
                 ],
               ),
               SizedBox(height: 12),
@@ -737,6 +753,75 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                 decoration: InputDecoration(labelText: 'Розмір лиштви'),
                 items: ['30 мм', '50 мм', '70 мм'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
                 onChanged: (val) => setState(() => _architraveSize = val!),
+              ),
+            ],
+          ),
+
+          // Вкладка 3: Калькулятор матеріалів
+          ListView(
+            padding: EdgeInsets.all(16.0),
+            children: [
+              Text('Розрахунок матеріалів за розмірами отвору', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF3E2723))),
+              SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Дверна коробка:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                          Text('${boxMeters.toStringAsFixed(2)} м.п.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF8D6E63))),
+                        ],
+                      ),
+                      Text('Функція: тримає дверне полотно в отворі.', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      Divider(height: 24),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Лиштва (на 2 боки):', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                          Text('${architravePieces.toStringAsFixed(0)} палок', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF8D6E63))),
+                        ],
+                      ),
+                      Text('Функція: закриває монтажний шов навколо отвору.', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      Divider(height: 24),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Добірна планка:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                          Text('${doborMeters.toStringAsFixed(2)} м.п.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF8D6E63))),
+                        ],
+                      ),
+                      Text('Функція: закриває стіну, якщо її товщина більша за коробку.', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      Divider(height: 24),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Монтажна піна:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                          Text('~ 1.5 балона', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF8D6E63))),
+                        ],
+                      ),
+                      Text('Функція: фіксація та герметизація коробки в отворі.', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Color(0xFFEFEBE9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '💡 Розрахунок базується на введеній висоті (${avgHeight.toStringAsFixed(0)} мм), середній ширині (${avgWidth.toStringAsFixed(0)} мм) та товщині стіни (${avgWall.toStringAsFixed(0)} мм) із врахуванням технічного запасу 10%.',
+                  style: TextStyle(color: Color(0xFF5D4037), fontSize: 13),
+                ),
               ),
             ],
           ),
@@ -797,13 +882,14 @@ class True3DCanvasPainter extends CustomPainter {
     bool isRight = (openSide == 'Праве');
     bool isExternal = (openType == 'Зовнішнє');
 
+    // Виправлена вісь обертання для правого/лівого відкривання
     double pivotX = isRight ? boxRect.right : boxRect.left;
     double pivotY = boxRect.center.dy;
 
     canvas.translate(pivotX, pivotY);
     double rad = openAngle * math.pi / 180;
     
-    double angleMultiplier = isRight ? -1.0 : 1.0;
+    double angleMultiplier = isRight ? 1.0 : -1.0;
     if (!isExternal) angleMultiplier *= -1.0;
 
     final vmath.Matrix4 matrix = vmath.Matrix4.identity()
@@ -816,12 +902,14 @@ class True3DCanvasPainter extends CustomPainter {
     canvas.drawRect(doorLeaf, paintCanvasFill);
     canvas.drawRect(doorLeaf, paintCanvas);
 
+    // Петлі на відповідній стороні коробки
     for (int i = 0; i < hingeCount; i++) {
       double hY = (i - (hingeCount - 1) / 2) * (h / 3);
       double hingeXPos = isRight ? w - 5 : 5;
       canvas.drawCircle(Offset(hingeXPos, hY), 3.5, paintHardware);
     }
 
+    // Ручка та отвори з протилежного від петель боку
     double handleX = isRight ? w * 0.25 : w * 0.75;
     if (hasHandle) {
       canvas.drawCircle(Offset(handleX, 0), 4.5, paintHardware);
@@ -930,7 +1018,7 @@ class True3DOpeningPainter extends CustomPainter {
     drawWallSide(fTL, fTR, bTR, bTL);
     drawWallSide(fTR, fBR, bBR, bTR);
     drawWallSide(fBR, fBL, bBL, bBR);
-    drawWallSide(fBL, fTL, bTL, bBL); // Виправлено виклик без іменованих аргументів
+    drawWallSide(fBL, fTL, bTL, bBL);
 
     canvas.drawPath(backPath, paintBack);
     canvas.drawPath(frontPath, paintFront);
