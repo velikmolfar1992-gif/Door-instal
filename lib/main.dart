@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 void main() {
   runApp(DoorInstallerApp());
@@ -102,7 +103,7 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
                     builder: (context) => ProjectDoorsScreen(orderData: order),
                   ),
                 );
-                setState(() {});
+                setState({});
               },
             ),
           );
@@ -117,7 +118,7 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
   }
 }
 
-// 2. Екран списку дверей у конкретному замовленні
+// 2. Екран списку дверей у замовленні
 class ProjectDoorsScreen extends StatefulWidget {
   final Map<String, dynamic> orderData;
   ProjectDoorsScreen({required this.orderData});
@@ -186,7 +187,6 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
       ),
       body: Column(
         children: [
-          // Інформація про клієнта
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Row(
@@ -259,7 +259,7 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
   }
 }
 
-// 3. Екран редагування дверей, розмірів полотна та лиштви
+// 3. Екран редагування дверей та об'ємної візуалізації
 class EditDoorScreen extends StatefulWidget {
   final Map<String, dynamic> doorData;
   EditDoorScreen({required this.doorData});
@@ -327,11 +327,13 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
     double oHeight = double.tryParse(_openHeightController.text) ?? 2000;
     double wall = double.tryParse(_wallController.text) ?? 100;
     double boxW = double.tryParse(_boxWidthController.text) ?? 80;
+    double boxD = double.tryParse(_boxDepthController.text) ?? 40;
     double doborW = double.tryParse(_doborWidthController.text) ?? 0;
+    int hCount = int.tryParse(_hingeCount) ?? 3;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Параметри дверей та прорізу'),
+        title: Text('Параметри та 3D креслення'),
         actions: [
           IconButton(
             icon: Icon(Icons.save),
@@ -343,7 +345,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
               widget.doorData['canvasHeight'] = cHeight;
               widget.doorData['wallThick'] = wall;
               widget.doorData['boxWidth'] = boxW;
-              widget.doorData['boxDepth'] = double.tryParse(_boxDepthController.text) ?? 40;
+              widget.doorData['boxDepth'] = boxD;
               widget.doorData['doborWidth'] = doborW;
               widget.doorData['architraveSize'] = _architraveSize;
               widget.doorData['openSide'] = _openSide;
@@ -371,6 +373,38 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           ),
           SizedBox(height: 16),
           
+          // --- ОБ'ЄМНЕ КРЕСЛЕННЯ (3D ІЗОМЕТРІЯ) ---
+          Text('Об\'ємне креслення (з фурнітурою та розмірами)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          SizedBox(height: 8),
+          Container(
+            height: 300,
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              border: Border.all(color: Colors.blueGrey, width: 2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: CustomPaint(
+              painter: IsometricDoorPainter(
+                canvasWidth: cWidth,
+                canvasHeight: cHeight,
+                openWidth: oWidth,
+                openHeight: oHeight,
+                wallThick: wall,
+                boxWidth: boxW,
+                boxDepth: boxD,
+                architraveSize: _architraveSize,
+                openSide: _openSide,
+                openType: _openType,
+                hingeCount: hCount,
+                hingeType: _hingeType,
+                hasHandle: _hasHandle,
+                hasLatch: _hasLatch,
+                hasKey: _hasKey,
+              ),
+            ),
+          ),
+          SizedBox(height: 20),
+
           Text('Розміри дверного полотна (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Row(
             children: [
@@ -381,7 +415,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           ),
           SizedBox(height: 16),
 
-          Text('Розміри прорізу (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text('Розміри прорізу та стіни (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Row(
             children: [
               Expanded(child: TextField(controller: _openWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина прорізу'), onChanged: (v) => setState(() {}))),
@@ -393,7 +427,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           ),
           SizedBox(height: 16),
           
-          Text('Коробка, добір та лиштва', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text('Коробка та лиштва', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Row(
             children: [
               Expanded(child: TextField(controller: _boxWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина коробки'), onChanged: (v) => setState(() {}))),
@@ -405,7 +439,6 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           ),
           SizedBox(height: 12),
           
-          // Вибір розміру лиштви (крило)
           DropdownButtonFormField<String>(
             value: _architraveSize,
             decoration: InputDecoration(labelText: 'Розмір лиштви (крило)'),
@@ -437,31 +470,6 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           ),
           SizedBox(height: 20),
           
-          // Візуальне 2D креслення з розмірами полотна та отвору
-          Text('Візуальне 2D креслення', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          SizedBox(height: 8),
-          Container(
-            height: 240,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.blueGrey, width: 2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: CustomPaint(
-              painter: DetailedDoorPainter(
-                canvasWidth: cWidth,
-                canvasHeight: cHeight,
-                wallThick: wall,
-                boxWidth: boxW,
-                doborWidth: doborW,
-                architraveSize: _architraveSize,
-                openSide: _openSide,
-                openType: _openType,
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-
           Text('Фурнітура та отвори', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           DropdownButtonFormField<String>(
             value: _hingeType,
@@ -518,91 +526,153 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
   }
 }
 
-// 2D Креслення з параметрами полотна та лиштви
-class DetailedDoorPainter extends CustomPainter {
+// Об'ємний (ізометричний) відмальовник креслення дверей з розмірами та фурнітурою
+class IsometricDoorPainter extends CustomPainter {
   final double canvasWidth;
   final double canvasHeight;
+  final double openWidth;
+  final double openHeight;
   final double wallThick;
   final double boxWidth;
-  final double doborWidth;
+  final double boxDepth;
   final String architraveSize;
   final String openSide;
   final String openType;
+  final int hingeCount;
+  final String hingeType;
+  final bool hasHandle;
+  final bool hasLatch;
+  final bool hasKey;
 
-  DetailedDoorPainter({
+  IsometricDoorPainter({
     required this.canvasWidth,
     required this.canvasHeight,
+    required this.openWidth,
+    required this.openHeight,
     required this.wallThick,
     required this.boxWidth,
-    required this.doborWidth,
+    required this.boxDepth,
     required this.architraveSize,
     required this.openSide,
     required this.openType,
+    required this.hingeCount,
+    required this.hingeType,
+    required this.hasHandle,
+    required this.hasLatch,
+    required this.hasKey,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paintWall = Paint()
-      ..color = Colors.blueGrey
+      ..color = Colors.blueGrey.shade700
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0;
 
-    final paintDoor = Paint()
-      ..color = Colors.blue
+    final paintBox = Paint()
+      ..color = Colors.brown.shade400
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+
+    final paintCanvas = Paint()
+      ..color = Colors.blue.shade600
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
-    final paintText = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    final paintHardware = Paint()
+      ..color = Colors.amber.shade800
+      ..style = PaintingStyle.fill;
 
-    final double rectLeft = size.width * 0.25;
-    final double rectTop = size.height * 0.2;
-    final double rectWidth = size.width * 0.5;
-    final double rectHeight = size.height * 0.6;
+    final paintHole = Paint()
+      ..color = Colors.black87
+      ..style = PaintingStyle.fill;
 
-    final rect = Rect.fromLTWH(rectLeft, rectTop, rectWidth, rectHeight);
-    canvas.drawRect(rect, paintWall);
+    final paintText = TextPainter(textDirection: TextDirection.ltr);
 
-    Path path = Path();
-    if (openSide == 'Праве') {
-      if (openType == 'Зовнішнє') {
-        path.moveTo(rect.right, rect.bottom);
-        path.arcToPoint(Offset(rect.right, rect.top), radius: Radius.circular(rect.height), clockwise: false);
+    // Центр об'ємного креслення
+    double cx = size.width / 2;
+    double cy = size.height / 2 + 30;
+
+    // Масштабування пікселів під розміри екрана
+    double scaleW = 0.12;
+    double scaleH = 0.08;
+
+    double wBox = openWidth * scaleW;
+    double hBox = openHeight * scaleH;
+
+    // Малюємо об'ємний отвір стіни
+    Path wallPath = Path()
+      ..moveTo(cx - wBox / 2, cy - hBox / 2)
+      ..lineTo(cx + wBox / 2, cy - hBox / 2)
+      ..lineTo(cx + wBox / 2, cy + hBox / 2)
+      ..lineTo(cx - wBox / 2, cy + hBox / 2)
+      ..close();
+    canvas.drawPath(wallPath, paintWall);
+
+    // Малюємо об'ємну коробку
+    double bOffset = 6.0;
+    Path boxPath = Path()
+      ..moveTo(cx - wBox / 2 - bOffset, cy - hBox / 2 - bOffset)
+      ..lineTo(cx + wBox / 2 + bOffset, cy - hBox / 2 - bOffset)
+      ..lineTo(cx + wBox / 2 + bOffset, cy + hBox / 2 + bOffset)
+      ..lineTo(cx - wBox / 2 - bOffset, cy + hBox / 2 + bOffset)
+      ..close();
+    canvas.drawPath(boxPath, paintBox);
+
+    // Дверне полотно в коробці
+    double cW = canvasWidth * scaleW;
+    double cH = canvasHeight * scaleH;
+    Rect doorRect = Rect.fromCenter(center: Offset(cx, cy), width: cW, height: cH);
+    canvas.drawRect(doorRect, paintCanvas);
+
+    // Рендер петель залежно від їх кількості та сторони
+    bool isRight = (openSide == 'Праве');
+    double hingeX = isRight ? (cx + cW / 2) : (cx - cW / 2);
+    
+    for (int i = 0; i < hingeCount; i++) {
+      double hY;
+      if (hingeCount == 2) {
+        hY = (i == 0) ? (cy - cH / 3) : (cy + cH / 3);
+      } else if (hingeCount == 3) {
+        hY = cy + (i - 1) * (cH / 3);
       } else {
-        path.moveTo(rect.right, rect.top);
-        path.arcToPoint(Offset(rect.right, rect.bottom), radius: Radius.circular(rect.height), clockwise: false);
+        hY = cy - cH / 2.5 + i * (cH / 3);
       }
-    } else {
-      if (openType == 'Зовнішнє') {
-        path.moveTo(rect.left, rect.bottom);
-        path.arcToPoint(Offset(rect.left, rect.top), radius: Radius.circular(rect.height), clockwise: true);
-      } else {
-        path.moveTo(rect.left, rect.top);
-        path.arcToPoint(Offset(rect.left, rect.bottom), radius: Radius.circular(rect.height), clockwise: true);
-      }
+      canvas.drawCircle(Offset(hingeX, hY), 4.0, paintHardware);
     }
-    canvas.drawPath(path, paintDoor);
 
-    void drawDimension(String text, double x, double y, {bool vertical = false}) {
+    // Рендер ручки та отворів (фіксатор, ключ)
+    double handleX = isRight ? (cx - cW / 3) : (cx + cW / 3);
+    double handleY = cy;
+
+    if (hasHandle) {
+      // Ручка (довгастий елемент або коло)
+      canvas.drawCircle(Offset(handleX, handleY), 6.0, paintHardware);
+    }
+
+    // Отвори під фіксатор або ключ нижче ручки
+    if (hasLatch) {
+      canvas.drawCircle(Offset(handleX, handleY + 25), 4.0, paintHole);
+    }
+    if (hasKey) {
+      canvas.drawRect(Rect.fromCenter(center: Offset(handleX, handleY + 45), width: 4, height: 10), paintHole);
+    }
+
+    // Функция для вывода текста размеров
+    void drawDim(String text, double x, double y) {
       paintText.text = TextSpan(
         text: text,
-        style: TextStyle(color: Colors.black87, fontSize: 10, fontWeight: FontWeight.bold),
+        style: TextStyle(color: Colors.indigo.shade900, fontSize: 10, fontWeight: FontWeight.bold),
       );
       paintText.layout();
-      canvas.save();
-      canvas.translate(x, y);
-      if (vertical) {
-        canvas.rotate(-3.1415926535897932 / 2);
-      }
-      paintText.paint(canvas, Offset(-paintText.width / 2, -paintText.height / 2));
-      canvas.restore();
+      paintText.paint(canvas, Offset(x - paintText.width / 2, y - paintText.height / 2));
     }
 
-    drawDimension('Полотно: ${canvasWidth.toStringAsFixed(0)} мм', rect.center.dx, rect.bottom + 15);
-    drawDimension('Лиштва: $architraveSize | Добір: ${doborWidth.toStringAsFixed(0)}мм', rect.center.dx, rect.top - 15);
-    drawDimension('Висота: ${canvasHeight.toStringAsFixed(0)} мм', rect.left - 22, rect.center.dy, vertical: true);
-    drawDimension('Стіна: ${wallThick.toStringAsFixed(0)} мм', rect.right + 22, rect.center.dy, vertical: true);
+    // Розміри на об'ємному кресленні
+    drawDim('Проріз: ${openWidth.toStringAsFixed(0)} x ${openHeight.toStringAsFixed(0)} мм', cx, cy - hBox / 2 - 25);
+    drawDim('Полотно: ${canvasWidth.toStringAsFixed(0)} x ${canvasHeight.toStringAsFixed(0)} мм', cx, cy + hBox / 2 + 15);
+    drawDim('Коробка: ${boxWidth.toStringAsFixed(0)}мм | Стіна: ${wallThick.toStringAsFixed(0)}мм', cx, cy + hBox / 2 + 32);
+    drawDim('Лиштва крило: $architraveSize', cx, cy - hBox / 2 - 42);
   }
 
   @override
