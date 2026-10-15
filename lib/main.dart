@@ -103,7 +103,7 @@ class _OrdersListScreenState extends State<OrdersListScreen> {
                     builder: (context) => ProjectDoorsScreen(orderData: order),
                   ),
                 );
-                setState({});
+                setState(() {});
               },
             ),
           );
