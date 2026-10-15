@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 void main() {
   runApp(DoorInstallerApp());
@@ -35,6 +34,9 @@ class _DoorProjectScreenState extends State<DoorProjectScreen> {
       'width': 800.0,
       'height': 2000.0,
       'wallThick': 160.0,
+      'boxWidth': 80.0,
+      'boxDepth': 40.0,
+      'doborWidth': 70.0,
       'openSide': 'Праве',
       'openType': 'Зовнішнє',
       'hingeType': 'Приховані',
@@ -55,6 +57,9 @@ class _DoorProjectScreenState extends State<DoorProjectScreen> {
         'width': 700.0,
         'height': 2000.0,
         'wallThick': 100.0,
+        'boxWidth': 80.0,
+        'boxDepth': 40.0,
+        'doborWidth': 0.0,
         'openSide': 'Ліві',
         'openType': 'Зовнішнє',
         'hingeType': 'Бабочки',
@@ -110,7 +115,7 @@ class _DoorProjectScreenState extends State<DoorProjectScreen> {
               ),
               title: Text(door['name'], style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(
-                'Проріз: ${door['width']}x${door['height']} мм | Стіна: ${door['wallThick']} мм\nВідкривання: ${door['openSide']}, ${door['openType']}\nМонтаж: ${doorTotal.toStringAsFixed(0)} грн',
+                'Проріз: ${door['width']}x${door['height']} мм | Стіна: ${door['wallThick']} мм\nКоробка: ${door['boxWidth']}x${door['boxDepth']} мм | Добір: ${door['doborWidth']} мм\nМонтаж: ${doorTotal.toStringAsFixed(0)} грн',
               ),
               isThreeLine: true,
               trailing: Icon(Icons.arrow_forward_ios, size: 16),
@@ -153,6 +158,9 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
   late TextEditingController _widthController;
   late TextEditingController _heightController;
   late TextEditingController _wallController;
+  late TextEditingController _boxWidthController;
+  late TextEditingController _boxDepthController;
+  late TextEditingController _doborWidthController;
   
   String _openSide = 'Праве';
   String _openType = 'Зовнішнє';
@@ -174,6 +182,9 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
     _widthController = TextEditingController(text: widget.doorData['width'].toString());
     _heightController = TextEditingController(text: widget.doorData['height'].toString());
     _wallController = TextEditingController(text: widget.doorData['wallThick'].toString());
+    _boxWidthController = TextEditingController(text: widget.doorData['boxWidth'].toString());
+    _boxDepthController = TextEditingController(text: widget.doorData['boxDepth'].toString());
+    _doborWidthController = TextEditingController(text: widget.doorData['doborWidth'].toString());
     
     _openSide = widget.doorData['openSide'];
     _openType = widget.doorData['openType'];
@@ -187,32 +198,14 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
     _extraPrice = widget.doorData['extraPrice'];
   }
 
-  // Розрахунок матеріалів
   Map<String, dynamic> calculateMaterials() {
-    double w = double.tryParse(_widthController.text) ?? 800;
-    double h = double.tryParse(_heightController.text) ?? 2000;
-    double wall = double.tryParse(_wallController.text) ?? 100;
-
-    // Стандартна ширина коробки зазвичай 70-80 мм
-    double standardBoxWidth = 80.0;
-    
-    // Кількість лиштви: 2 сторони по (2 вертикальні палиці висотою біля 2.1м + 1 горизонтальна біля 1м) -> в комплекті зазвичай 2.5 шт на бік, разом 5 шт на двері (або в пачках по 2.5м)
-    int architravesPieces = 5; // 5 палок лиштви на дві сторони
-
-    // Коробка: 2.5 палки на стандартний блок (2 стійки + поріг/притолока)
+    int architravesPieces = 5; // На дві сторони
     int boxPieces = 3;
-
-    // Добори: якщо стіна товща за коробку (наприклад, > 90-100мм), потрібен добір
-    double needDoborWidth = wall - 90;
-    if (needDoborWidth < 0) needDoborWidth = 0;
-    
-    // Кількість добірної дошки (погонні метри: 2 стійки + 1 поперечина = приблизно 5 м.п.)
-    double doborMeters = needDoborWidth > 0 ? 5.0 : 0.0;
+    double doborMeters = (double.tryParse(_doborWidthController.text) ?? 0) > 0 ? 5.0 : 0.0;
 
     return {
       'boxPieces': boxPieces,
       'architravesPieces': architravesPieces,
-      'doborWidth': needDoborWidth > 0 ? needDoborWidth : 0.0,
       'doborMeters': doborMeters,
     };
   }
@@ -220,18 +213,27 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
   @override
   Widget build(BuildContext context) {
     final mats = calculateMaterials();
+    double currentWidth = double.tryParse(_widthController.text) ?? 800;
+    double currentHeight = double.tryParse(_heightController.text) ?? 2000;
+    double currentWall = double.tryParse(_wallController.text) ?? 100;
+    double currentBoxW = double.tryParse(_boxWidthController.text) ?? 80;
+    double currentBoxD = double.tryParse(_boxDepthController.text) ?? 40;
+    double currentDobor = double.tryParse(_doborWidthController.text) ?? 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Редагування прорізу'),
+        title: Text('Редагування прорізу та креслення'),
         actions: [
           IconButton(
             icon: Icon(Icons.save),
             onPressed: () {
               widget.doorData['name'] = _nameController.text;
-              widget.doorData['width'] = double.tryParse(_widthController.text) ?? 800;
-              widget.doorData['height'] = double.tryParse(_heightController.text) ?? 2000;
-              widget.doorData['wallThick'] = double.tryParse(_wallController.text) ?? 100;
+              widget.doorData['width'] = currentWidth;
+              widget.doorData['height'] = currentHeight;
+              widget.doorData['wallThick'] = currentWall;
+              widget.doorData['boxWidth'] = currentBoxW;
+              widget.doorData['boxDepth'] = currentBoxD;
+              widget.doorData['doborWidth'] = currentDobor;
               widget.doorData['openSide'] = _openSide;
               widget.doorData['openType'] = _openType;
               widget.doorData['hingeType'] = _hingeType;
@@ -259,16 +261,27 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           Text('Розміри прорізу (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Row(
             children: [
-              Expanded(child: TextField(controller: _widthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина'))),
+              Expanded(child: TextField(controller: _widthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина'), onChanged: (v) => setState(() {}))),
               SizedBox(width: 10),
-              Expanded(child: TextField(controller: _heightController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Висота'))),
+              Expanded(child: TextField(controller: _heightController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Висота'), onChanged: (v) => setState(() {}))),
               SizedBox(width: 10),
-              Expanded(child: TextField(controller: _wallController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Товщ. стіни'))),
+              Expanded(child: TextField(controller: _wallController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Товщ. стіни'), onChanged: (v) => setState(() {}))),
+            ],
+          ),
+          SizedBox(height: 12),
+          
+          Text('Параметри коробки та добору (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Row(
+            children: [
+              Expanded(child: TextField(controller: _boxWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина коробки'), onChanged: (v) => setState(() {}))),
+              SizedBox(width: 10),
+              Expanded(child: TextField(controller: _boxDepthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Товщина коробки'), onChanged: (v) => setState(() {}))),
+              SizedBox(width: 10),
+              Expanded(child: TextField(controller: _doborWidthController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Ширина добору'), onChanged: (v) => setState(() {}))),
             ],
           ),
           SizedBox(height: 16),
           
-          // Вибір відкривання
           Row(
             children: [
               Expanded(
@@ -292,33 +305,31 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
           ),
           SizedBox(height: 20),
           
-          // 2D Креслення та Візуалізація
-          Text('Візуальне 2D креслення прорізу', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          // Деталізоване 2D креслення з розмірами
+          Text('Деталізоване 2D креслення з розмірами', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           SizedBox(height: 8),
           Container(
-            height: 180,
+            height: 240,
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: Colors.blueGrey, width: 2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: CustomPaint(
-              painter: Door2DPainter(
+              painter: DetailedDoorPainter(
+                width: currentWidth,
+                height: currentHeight,
+                wallThick: currentWall,
+                boxWidth: currentBoxW,
+                doborWidth: currentDobor,
                 openSide: _openSide,
                 openType: _openType,
-              ),
-              child: Center(
-                child: Text(
-                  '${_widthController.text} x ${_heightController.text} мм\n(Стіна: ${_wallController.text} мм)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold, backgroundColor: Colors.white70),
-                ),
               ),
             ),
           ),
           SizedBox(height: 20),
 
-          // Калькуляція матеріалів
+          // Розрахунок матеріалів
           Card(
             color: Colors.blue[50],
             child: Padding(
@@ -328,9 +339,9 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
                 children: [
                   Text('📦 Розрахунок необхідних матеріалів:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.blue[900])),
                   SizedBox(height: 6),
-                  Text('• Коробка: ${mats['boxPieces']} шт. (стандартна ширина ~80 мм)'),
-                  Text('• Лиштва: ${mats['architravesPieces']} пал. (на обидві сторони)'),
-                  Text('• Добори: ${mats['doborMeters']} м.п. (ширина добору: ${mats['doborWidth']} мм)'),
+                  Text('• Коробка: ${mats['boxPieces']} шт. (розмір: ${currentBoxW}x${currentBoxD} мм)'),
+                  Text('• Лиштва: ${mats['architravesPieces']} пал. (на дві сторони)'),
+                  Text('• Добір: ${mats['doborMeters']} м.п. (ширина: ${currentDobor} мм)'),
                 ],
               ),
             ),
@@ -393,31 +404,54 @@ class _EditDoorScreenState extends State<EditDoorScreen> {
   }
 }
 
-// Допоміжний клас для малювання 2D креслення прорізу та відкривання
-class Door2DPainter extends CustomPainter {
+// Детальний відмальовник креслення з лінійками розмірів (знизу, зверху, зліва, справа)
+class DetailedDoorPainter extends CustomPainter {
+  final double width;
+  final double height;
+  final double wallThick;
+  final double boxWidth;
+  final double doborWidth;
   final String openSide;
   final String openType;
 
-  Door2DPainter({required this.openSide, required this.openType});
+  DetailedDoorPainter({
+    required this.width,
+    required this.height,
+    required this.wallThick,
+    required this.boxWidth,
+    required this.doborWidth,
+    required this.openSide,
+    required this.openType,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paintWall = Paint()
       ..color = Colors.blueGrey
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0;
+      ..strokeWidth = 3.0;
 
     final paintDoor = Paint()
       ..color = Colors.blue
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
+      ..strokeWidth = 2.0;
 
-    final rect = Rect.fromLTWH(size.width * 0.25, size.height * 0.15, size.width * 0.5, size.height * 0.7);
+    final paintText = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
+
+    // Центруємо схему прорізу всередині віджету
+    final double rectLeft = size.width * 0.25;
+    final double rectTop = size.height * 0.2;
+    final double rectWidth = size.width * 0.5;
+    final double rectHeight = size.height * 0.6;
+
+    final rect = Rect.fromLTWH(rectLeft, rectTop, rectWidth, rectHeight);
     
-    // Малюємо стіни / проріз
+    // Малюємо рамку прорізу
     canvas.drawRect(rect, paintWall);
 
-    // Малюємо схему відкривання полотна
+    // Малюємо дугу відкривання дверей всередині
     Path path = Path();
     if (openSide == 'Праве') {
       if (openType == 'Зовнішнє') {
@@ -437,8 +471,38 @@ class Door2DPainter extends CustomPainter {
       }
     }
     canvas.drawPath(path, paintDoor);
+
+    // Функція виведення тексту розмірів
+    void drawDimension(String text, double x, double y, {bool vertical = false}) {
+      paintText.text = TextSpan(
+        text: text,
+        style: TextStyle(color: Colors.black87, fontSize: 10, fontWeight: FontWeight.bold),
+      );
+      paintText.layout();
+      canvas.save();
+      canvas.translate(x, y);
+      if (vertical) {
+        canvas.rotate(-math.pi / 2);
+      }
+      paintText.paint(canvas, Offset(-paintText.width / 2, -paintText.height / 2));
+      canvas.restore();
+    }
+
+    // Розмір ЗНИЗУ (Ширина прорізу)
+    drawDimension('Шир: ${width.toStringAsFixed(0)} мм', rect.center.dx, rect.bottom + 15);
+    // Розмір ЗВЕРХУ (Коробка та добір)
+    drawDimension('Коробка: ${boxWidth.toStringAsFixed(0)}мм | Добір: ${doborWidth.toStringAsFixed(0)}мм', rect.center.dx, rect.top - 15);
+    // Розмір ЗЛІВА (Висота прорізу)
+    drawDimension('Висота: ${height.toStringAsFixed(0)} мм', rect.left - 22, rect.center.dy, vertical: true);
+    // Розмір СПРАВА (Товщина стіни)
+    drawDimension('Стіна: ${wallThick.toStringAsFixed(0)} мм', rect.right + 22, rect.center.dy, vertical: true);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// Допоміжний клас для математичного обертання тексту на лінійках
+class math {
+  static const double pi = 3.1415926535897932;
 }
