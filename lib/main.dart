@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
+import 'package:vector_math/vector_math_64.dart' as vmath;
 
 void main() {
   runApp(DoorInstallerApp());
@@ -316,7 +317,7 @@ class _ProjectDoorsScreenState extends State<ProjectDoorsScreen> {
   }
 }
 
-// 3. Екран редагування з двома 3D вкладками (Полотно та Проріз)
+// 3. Екран редагування
 class EditDoorScreen extends StatefulWidget {
   final Map<String, dynamic> doorData;
   EditDoorScreen({required this.doorData});
@@ -356,7 +357,6 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
   double _basePrice = 1200.0;
   double _extraPrice = 400.0;
 
-  // Кути обертання пальцем для 3D прорізу
   double _rotateX = 0.0;
   double _rotateY = 0.0;
 
@@ -456,7 +456,6 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Вкладка 1: 3D Полотно з коробкою, петлями та ручками у перспективі
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
@@ -549,7 +548,6 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
             ],
           ),
 
-          // Вкладка 2: 3D Об'ємний проріз з глибиною стіни та жестами обертання
           ListView(
             padding: EdgeInsets.all(16.0),
             children: [
@@ -656,7 +654,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
   }
 }
 
-// Справжній 3D рендер полотна з коробкою та фурнітурою
+// Виправлений рендер 3D полотна з коробкою
 class True3DCanvasPainter extends CustomPainter {
   final double canvasWidth;
   final double canvasHeight;
@@ -698,11 +696,9 @@ class True3DCanvasPainter extends CustomPainter {
     double w = canvasWidth * scale;
     double h = canvasHeight * scale;
 
-    // 1. Об'ємна коробка
     Rect boxRect = Rect.fromCenter(center: Offset(cx, cy), width: w + 10, height: h + 10);
     canvas.drawRect(boxRect, paintBox);
 
-    // 2. Дверне полотно у перспективному 3D обертанні
     canvas.save();
     bool isRight = (openSide == 'Праве');
     double pivotX = isRight ? boxRect.right : boxRect.left;
@@ -710,22 +706,23 @@ class True3DCanvasPainter extends CustomPainter {
 
     canvas.translate(pivotX, pivotY);
     double rad = openAngle * math.pi / 180;
-    canvas.transform(Matrix4.identity()
+    
+    // Виправлена матриця трансформації для Flutter
+    final vmath.Matrix4 matrix = vmath.Matrix4.identity()
       ..setEntry(3, 2, 0.002)
-      ..rotateY(isRight ? rad : -rad).storage);
+      ..rotateY(isRight ? rad : -rad);
+    canvas.transform(matrix.storage);
 
     double drawX = isRight ? -w : 0;
     Rect doorLeaf = Rect.fromLTWH(drawX, -h / 2 + 5, w, h - 10);
     canvas.drawRect(doorLeaf, paintCanvasFill);
     canvas.drawRect(doorLeaf, paintCanvas);
 
-    // Петлі на полотні
     for (int i = 0; i < hingeCount; i++) {
       double hY = (i - (hingeCount - 1) / 2) * (h / 3);
       canvas.drawCircle(Offset(isRight ? w - 5 : 5, hY), 3.5, paintHardware);
     }
 
-    // Ручка та отвори
     double handleX = isRight ? w * 0.35 : w * 0.65;
     if (hasHandle) {
       canvas.drawCircle(Offset(handleX, 0), 4.5, paintHardware);
@@ -739,7 +736,6 @@ class True3DCanvasPainter extends CustomPainter {
 
     canvas.restore();
 
-    // Розміри
     void drawDim(String text, double x, double y) {
       paintText.text = TextSpan(text: text, style: TextStyle(color: Colors.indigo.shade900, fontSize: 10, fontWeight: FontWeight.bold));
       paintText.layout();
@@ -753,7 +749,7 @@ class True3DCanvasPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-// Справжній 3D Об'ємний проріз з товщиною стіни та глибиною
+// 3D Об'ємний проріз з глибиною стіни
 class True3DOpeningPainter extends CustomPainter {
   final double opTop;
   final double opMid;
@@ -793,9 +789,8 @@ class True3DOpeningPainter extends CustomPainter {
     double hLeft = opHLeft * scaleH;
     double hRight = opHRight * scaleH;
 
-    double d = 30.0; // Ефект глибини товщини стіни
+    double d = 30.0;
 
-    // Передній контур отвору
     Path frontPath = Path()
       ..moveTo(cx - wTop / 2, cy - hLeft / 2)
       ..lineTo(cx + wTop / 2, cy - hRight / 2)
@@ -803,7 +798,6 @@ class True3DOpeningPainter extends CustomPainter {
       ..lineTo(cx - wBot / 2, cy + hLeft / 2)
       ..close();
 
-    // Задній контур отвору (зміщений для 3D об'єму)
     Path backPath = Path()
       ..moveTo(cx - wTop / 2 - d, cy - hLeft / 2 - d / 2)
       ..lineTo(cx + wTop / 2 + d, cy - hRight / 2 - d / 2)
@@ -811,7 +805,6 @@ class True3DOpeningPainter extends CustomPainter {
       ..lineTo(cx - wBot / 2 - d, cy + hLeft / 2 - d / 2)
       ..close();
 
-    // Лінії глибини товщини стіни
     canvas.drawLine(Offset(cx - wTop / 2, cy - hLeft / 2), Offset(cx - wTop / 2 - d, cy - hLeft / 2 - d / 2), paintDepth);
     canvas.drawLine(Offset(cx + wTop / 2, cy - hRight / 2), Offset(cx + wTop / 2 + d, cy - hRight / 2 - d / 2), paintDepth);
     canvas.drawLine(Offset(cx - wBot / 2, cy + hLeft / 2), Offset(cx - wBot / 2 - d, cy + hLeft / 2 - d / 2), paintDepth);
