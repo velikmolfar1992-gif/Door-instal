@@ -5,6 +5,9 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - name: Initialize Flutter Project Structure
+        script: |
+          flutter create . --org com.example.doorinstaller --project-name door_installer
       - name: Get flutter packages
         script: flutter packages get
       - name: Build APK
