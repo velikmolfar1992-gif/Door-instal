@@ -464,7 +464,7 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                 decoration: InputDecoration(labelText: 'Назва приміщення (напр. Спальня)'),
               ),
               SizedBox(height: 16),
-              Text('3D Візуалізація полотна та коробки', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('3D Візуалізація полотна та відкривання', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               SizedBox(height: 8),
               Container(
                 height: 280,
@@ -478,8 +478,9 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                     canvasWidth: cWidth,
                     canvasHeight: cHeight,
                     wallDepth: (wallTop + wallBot) / 2,
-                    openAngle: 40.0,
+                    openAngle: 45.0,
                     openSide: _openSide,
+                    openType: _openType,
                     hingeCount: hCount,
                     hasHandle: _hasHandle,
                     hasLatch: _hasLatch,
@@ -488,6 +489,30 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
                 ),
               ),
               SizedBox(height: 20),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _openSide,
+                      decoration: InputDecoration(labelText: 'Сторона відкривання'),
+                      items: ['Праве', 'Ліві'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                      onChanged: (val) => setState(() => _openSide = val!),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _openType,
+                      decoration: InputDecoration(labelText: 'Тип (зовн./внутр.)'),
+                      items: ['Зовнішнє', 'Внутрішнє'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                      onChanged: (val) => setState(() => _openType = val!),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+
               Text('Розміри дверного полотна (мм)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               Row(
                 children: [
@@ -654,13 +679,14 @@ class _EditDoorScreenState extends State<EditDoorScreen> with SingleTickerProvid
   }
 }
 
-// Виправлений рендер 3D полотна з коробкою
+// 3D Рендер полотна
 class True3DCanvasPainter extends CustomPainter {
   final double canvasWidth;
   final double canvasHeight;
   final double wallDepth;
   final double openAngle;
   final String openSide;
+  final String openType;
   final int hingeCount;
   final bool hasHandle;
   final bool hasLatch;
@@ -672,6 +698,7 @@ class True3DCanvasPainter extends CustomPainter {
     required this.wallDepth,
     required this.openAngle,
     required this.openSide,
+    required this.openType,
     required this.hingeCount,
     required this.hasHandle,
     required this.hasLatch,
@@ -701,16 +728,20 @@ class True3DCanvasPainter extends CustomPainter {
 
     canvas.save();
     bool isRight = (openSide == 'Праве');
+    bool isExternal = (openType == 'Зовнішнє');
+
     double pivotX = isRight ? boxRect.right : boxRect.left;
     double pivotY = boxRect.center.dy;
 
     canvas.translate(pivotX, pivotY);
     double rad = openAngle * math.pi / 180;
     
-    // Виправлена матриця трансформації для Flutter
+    double angleMultiplier = isRight ? 1.0 : -1.0;
+    if (!isExternal) angleMultiplier *= -1.0;
+
     final vmath.Matrix4 matrix = vmath.Matrix4.identity()
       ..setEntry(3, 2, 0.002)
-      ..rotateY(isRight ? rad : -rad);
+      ..rotateY(rad * angleMultiplier);
     canvas.transform(matrix.storage);
 
     double drawX = isRight ? -w : 0;
@@ -742,14 +773,14 @@ class True3DCanvasPainter extends CustomPainter {
       paintText.paint(canvas, Offset(x - paintText.width / 2, y - paintText.height / 2));
     }
 
-    drawDim('Полотно: ${canvasWidth.toStringAsFixed(0)} x ${canvasHeight.toStringAsFixed(0)} мм', cx, boxRect.bottom + 18);
+    drawDim('Полотно: ${canvasWidth.toStringAsFixed(0)} x ${canvasHeight.toStringAsFixed(0)} мм ($openSide, $openType)', cx, boxRect.bottom + 18);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-// 3D Об'ємний проріз з глибиною стіни
+// 3D Об'ємний проріз з динамічною глибиною від товщини стіни
 class True3DOpeningPainter extends CustomPainter {
   final double opTop;
   final double opMid;
@@ -773,7 +804,8 @@ class True3DOpeningPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paintFront = Paint()..color = Colors.indigo.shade800..style = PaintingStyle.stroke..strokeWidth = 2.5;
     final paintBack = Paint()..color = Colors.indigo.shade300..style = PaintingStyle.stroke..strokeWidth = 1.5;
-    final paintDepth = Paint()..color = Colors.blueGrey..style = PaintingStyle.stroke..strokeWidth = 1.5;
+    final paintDepthWall = Paint()..color = Colors.blueGrey.withOpacity(0.25)..style = PaintingStyle.fill;
+    final paintDepthLine = Paint()..color = Colors.blueGrey.shade700..style = PaintingStyle.stroke..strokeWidth = 1.5;
     final paintText = TextPainter(textDirection: TextDirection.ltr);
 
     double cx = size.width / 2;
@@ -781,34 +813,56 @@ class True3DOpeningPainter extends CustomPainter {
 
     double maxW = math.max(math.max(opTop, opMid), opBot);
     double maxH = math.max(opHLeft, opHRight);
-    double scaleW = 120.0 / (maxW > 0 ? maxW : 900.0);
-    double scaleH = 140.0 / (maxH > 0 ? maxH : 2100.0);
+    double scaleW = 110.0 / (maxW > 0 ? maxW : 900.0);
+    double scaleH = 130.0 / (maxH > 0 ? maxH : 2100.0);
 
     double wTop = opTop * scaleW;
     double wBot = opBot * scaleW;
     double hLeft = opHLeft * scaleH;
     double hRight = opHRight * scaleH;
 
-    double d = 30.0;
+    double avgWallThick = (wallTop + wallBot) / 2;
+    double d = avgWallThick * scaleW * 0.45;
+
+    Offset fTL = Offset(cx - wTop / 2, cy - hLeft / 2);
+    Offset fTR = Offset(cx + wTop / 2, cy - hRight / 2);
+    Offset fBR = Offset(cx + wBot / 2, cy + hRight / 2);
+    Offset fBL = Offset(cx - wBot / 2, cy + hLeft / 2);
 
     Path frontPath = Path()
-      ..moveTo(cx - wTop / 2, cy - hLeft / 2)
-      ..lineTo(cx + wTop / 2, cy - hRight / 2)
-      ..lineTo(cx + wBot / 2, cy + hRight / 2)
-      ..lineTo(cx - wBot / 2, cy + hLeft / 2)
+      ..moveTo(fTL.dx, fTL.dy)
+      ..lineTo(fTR.dx, fTR.dy)
+      ..lineTo(fBR.dx, fBR.dy)
+      ..lineTo(fBL.dx, fBL.dy)
       ..close();
+
+    Offset bTL = Offset(fTL.dx - d, fTL.dy - d * 0.5);
+    Offset bTR = Offset(fTR.dx + d, fTR.dy - d * 0.5);
+    Offset bBR = Offset(fBR.dx + d, fBR.dy - d * 0.5);
+    Offset bBL = Offset(fBL.dx - d, fBL.dy - d * 0.5);
 
     Path backPath = Path()
-      ..moveTo(cx - wTop / 2 - d, cy - hLeft / 2 - d / 2)
-      ..lineTo(cx + wTop / 2 + d, cy - hRight / 2 - d / 2)
-      ..lineTo(cx + wBot / 2 + d, cy + hRight / 2 - d / 2)
-      ..lineTo(cx - wBot / 2 - d, cy + hLeft / 2 - d / 2)
+      ..moveTo(bTL.dx, bTL.dy)
+      ..lineTo(bTR.dx, bTR.dy)
+      ..lineTo(bBR.dx, bBR.dy)
+      ..lineTo(bBL.dx, bBL.dy)
       ..close();
 
-    canvas.drawLine(Offset(cx - wTop / 2, cy - hLeft / 2), Offset(cx - wTop / 2 - d, cy - hLeft / 2 - d / 2), paintDepth);
-    canvas.drawLine(Offset(cx + wTop / 2, cy - hRight / 2), Offset(cx + wTop / 2 + d, cy - hRight / 2 - d / 2), paintDepth);
-    canvas.drawLine(Offset(cx - wBot / 2, cy + hLeft / 2), Offset(cx - wBot / 2 - d, cy + hLeft / 2 - d / 2), paintDepth);
-    canvas.drawLine(Offset(cx + wBot / 2, cy + hRight / 2), Offset(cx + wBot / 2 + d, cy + hRight / 2 - d / 2), paintDepth);
+    void drawWallSide(Offset f1, Offset f2, Offset b2, Offset b1) {
+      Path sidePath = Path()
+        ..moveTo(f1.dx, f1.dy)
+        ..lineTo(f2.dx, f2.dy)
+        ..lineTo(b2.dx, b2.dy)
+        ..lineTo(b1.dx, b1.dy)
+        ..close();
+      canvas.drawPath(sidePath, paintDepthWall);
+      canvas.drawPath(sidePath, paintDepthLine);
+    }
+
+    drawWallSide(fTL, fTR, bTR, bTL);
+    drawWallSide(fTR, fBR, bBR, bTR);
+    drawWallSide(fBR, fBL, bBL, bBR);
+    drawWallSide(fBL, fTL, bTL, bBL);
 
     canvas.drawPath(backPath, paintBack);
     canvas.drawPath(frontPath, paintFront);
@@ -819,12 +873,11 @@ class True3DOpeningPainter extends CustomPainter {
       paintText.paint(canvas, Offset(x - paintText.width / 2, y - paintText.height / 2));
     }
 
-    drawDim('Зверху: ${opTop.toStringAsFixed(0)} мм', cx, cy - hLeft / 2 - 14);
+    drawDim('Зверху: ${opTop.toStringAsFixed(0)} мм', cx, cy - hLeft / 2 - 16);
     drawDim('Посер: ${opMid.toStringAsFixed(0)} мм', cx, cy);
-    drawDim('Знизу: ${opBot.toStringAsFixed(0)} мм', cx, cy + hLeft / 2 + 16);
+    drawDim('Знизу: ${opBot.toStringAsFixed(0)} мм', cx, cy + hLeft / 2 + 18);
     
-    drawDim('Ліва: ${opHLeft.toStringAsFixed(0)}', cx - wTop / 2 - 35, cy);
-    drawDim('Права: ${opHRight.toStringAsFixed(0)}', cx + wTop / 2 + 35, cy);
+    drawDim('Стіна: ${avgWallThick.toStringAsFixed(0)} мм', bTR.dx + 25, bTR.dy);
   }
 
   @override
